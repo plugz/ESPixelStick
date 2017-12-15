@@ -238,17 +238,11 @@
     <div id="test" class="mdiv hidden anchor">
       <fieldset>
         <legend class="esps-legend">Display Testing</legend>
-        <form class="form-horizontal" onsubmit="return false">
+        <form class="form-horizontal">
           <div class="form-group">
             <label class="control-label col-sm-2" for="t_mode">Testing Mode</label>
             <div class="col-sm-10">
-              <select class="form-control" id="tmode" name="tmode" onchange="test()">
-                <option value="t_disabled">Disabled</option>
-                <option value="t_static">Static</option>
-                <option value="t_chase">Chase</option>
-                <option value="t_rainbow">Rainbow</option>
-                <option value="t_view">View Stream</option>
-              </select>
+              <select class="form-control" id="t_mode" name="t_mode" onchange="test()"></select>
             </div>
           </div>
           <div id="t_disable"></div>
@@ -259,7 +253,7 @@
             <div class="form-group">
               <label class="control-label col-sm-2" for="t_color">Color</label>
               <div class="col-sm-10">
-                <input type="button" class="form-control color no-alpha" value="rgb(128,128,128)"/>
+                <input type="button" class="form-control color no-alpha"/>
               </div>
             </div>
           </div>
@@ -270,7 +264,7 @@
             <div class="form-group">
               <label class="control-label col-sm-2" for="t_color">Color</label>
               <div class="col-sm-10">
-                <input type="button" class="form-control color no-alpha" value="rgb(255,255,255)" />
+                <input type="button" class="form-control color no-alpha"/>
               </div>
             </div>
           </div>
@@ -297,6 +291,18 @@
             </div>
             <div class="row">
               <div class="col-sm-12"><canvas id="canvas" width="820" height="960"></canvas></div>
+            </div>
+          </div>
+
+          <!-- Testing / Standby save -->
+          <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-10">
+              <div class="checkbox"><label><input type="checkbox" id="stdby_force" name="stdby_force"> Force Test Mode</label></div>
+            </div>
+          </div>          
+          <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-10">
+              <button type="button" onclick="submitStandby()" class="btn btn-primary">Save Changes</button>
             </div>
           </div>
 

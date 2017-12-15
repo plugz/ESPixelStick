@@ -171,7 +171,6 @@ void setup() {
     // Load configuration from SPIFFS and set Hostname
     loadConfig();
     WiFi.hostname(config.hostname);
-    config.testmode = TestMode::DISABLED;
 
     // Setup WiFi Handlers
     wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
@@ -663,22 +662,36 @@ void dsDeviceConfig(JsonObject &json) {
     config.mqtt_topic = json["mqtt"]["topic"].as<String>();
 
 #if defined(ESPS_MODE_PIXEL)
-    /* Pixel */
+    // Pixel
     config.pixel_type = PixelType(static_cast<uint8_t>(json["pixel"]["type"]));
     config.pixel_color = PixelColor(static_cast<uint8_t>(json["pixel"]["color"]));
     config.gamma = json["pixel"]["gamma"];
 
 #elif defined(ESPS_MODE_SERIAL)
-    /* Serial */
+    // Serial
     config.serial_type = SerialType(static_cast<uint8_t>(json["serial"]["type"]));
     config.baudrate = BaudRate(static_cast<uint32_t>(json["serial"]["baudrate"]));
 #endif
+}
+
+// De-serialize Standby Config
+void dsStandbyConfig(JsonObject &json) {
+    config.testmode = TestMode(static_cast<uint8_t>(json["standby"]["mode"]));
+    config.stdby_force = json["standby"]["force"];
+    testing.r = json["standby"]["rgb"][0];
+    testing.g = json["standby"]["rgb"][1];
+    testing.b = json["standby"]["rgb"][2];
 }
 
 // Load configugration JSON file
 void loadConfig() {
     // Zeroize Config struct
     memset(&config, 0, sizeof(config));
+
+    // Default testing colors
+    testing.r = 127;
+    testing.g = 127;
+    testing.b = 127;
 
     // Load CONFIG_FILE json. Create and init with defaults if not found
     File file = SPIFFS.open(CONFIG_FILE, "r");
@@ -707,6 +720,11 @@ void loadConfig() {
 
         dsNetworkConfig(json);
         dsDeviceConfig(json);
+        dsStandbyConfig(json);
+
+        // Disable standby / test mode if not forced
+        if (!config.stdby_force)
+            config.testmode = TestMode::DISABLED;
 
         LOG_PORT.println(F("- Configuration loaded."));
     }
@@ -773,6 +791,15 @@ void serializeConfig(String &jsonString, bool pretty, bool creds) {
     serial["type"] = static_cast<uint8_t>(config.serial_type);
     serial["baudrate"] = static_cast<uint32_t>(config.baudrate);
 #endif
+
+    // Standby
+    JsonObject &standby = json.createNestedObject("standby");
+    standby["mode"] = static_cast<uint8_t>(config.testmode);
+    standby["force"] = config.stdby_force;
+    JsonArray &rgb = standby.createNestedArray("rgb");
+    rgb.add(testing.r);
+    rgb.add(testing.g);
+    rgb.add(testing.b);
 
     if (pretty)
         json.prettyPrintTo(jsonString);

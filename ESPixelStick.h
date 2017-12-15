@@ -20,7 +20,7 @@
 #ifndef ESPIXELSTICK_H_
 #define ESPIXELSTICK_H_
 
-const char VERSION[] = "3.0";
+const char VERSION[] = "3.1dev";
 const char BUILD_DATE[] = __DATE__;
 
 /*****************************************/
@@ -91,6 +91,7 @@ typedef struct {
     String      id;             /* Device ID */
     DevMode     devmode;        /* Device Mode - used for reporting mode, can't be set */
     TestMode    testmode;       /* Testing mode */
+    bool        stdby_force;    /* Force standby mode */
 
     /* Network */
     String      ssid;
@@ -134,6 +135,7 @@ typedef struct {
 void serializeConfig(String &jsonString, bool pretty = false, bool creds = false);
 void dsNetworkConfig(JsonObject &json);
 void dsDeviceConfig(JsonObject &json);
+void dsStandbyConfig(JsonObject &json);
 void saveConfig();
 
 #endif /* ESPIXELSTICK_H_ */

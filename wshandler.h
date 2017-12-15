@@ -51,6 +51,7 @@ extern bool         reboot;     // Reboot flag
 
     S1 - Set Network Config
     S2 - Set Device Config
+    S3 - Set Standby / Testing Config
 
     XS - Get RSSI:heap:uptime
     X1 - Get RSSI
@@ -134,6 +135,14 @@ void procE(uint8_t *data, AsyncWebSocketClient *client) {
             s_baud["460800"] = static_cast<uint32_t>(BaudRate::BR_460800);
 #endif
 
+            // Test / Standby modes
+            JsonObject &t_mode = json.createNestedObject("t_mode");
+            t_mode["Disabled"] = static_cast<uint8_t>(TestMode::DISABLED);
+            t_mode["Static"] = static_cast<uint8_t>(TestMode::STATIC);
+            t_mode["Chase"] = static_cast<uint8_t>(TestMode::CHASE);
+            t_mode["Rainbow"] = static_cast<uint8_t>(TestMode::RAINBOW);
+            t_mode["View Stream"] = static_cast<uint8_t>(TestMode::VIEW_STREAM);
+
             String response;
             json.printTo(response);
             client->text("E1" + response);
@@ -187,6 +196,7 @@ void procS(uint8_t *data, AsyncWebSocketClient *client) {
         return;
     }
 
+    bool reboot = false;
     switch (data[1]) {
         case '1':   // Set Network Config
             dsNetworkConfig(json);
@@ -195,7 +205,6 @@ void procS(uint8_t *data, AsyncWebSocketClient *client) {
             break;
         case '2':   // Set Device Config
             // Reboot if MQTT changed
-            bool reboot = false;
             if (config.mqtt != json["mqtt"]["enabled"])
                 reboot = true;
 
@@ -206,6 +215,11 @@ void procS(uint8_t *data, AsyncWebSocketClient *client) {
                 client->text("S1");
             else
                 client->text("S2");
+            break;
+        case '3':   // Set Standby Config
+            dsStandbyConfig(json);
+            saveConfig();
+            client->text("S2");
             break;
     }
 }

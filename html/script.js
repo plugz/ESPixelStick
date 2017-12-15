@@ -4,6 +4,7 @@ var wsBusy = false;
 var wsTimerId;
 
 var testing_modes = [ "t_disabled", "t_static", "t_chase", "t_rainbow", "t_view" ];
+var rgb = [];
 
 // Default modal properties
 $.fn.modal.Constructor.DEFAULTS.backdrop = 'static';
@@ -77,17 +78,19 @@ $(function() {
                         'b': colors.rgb.b
                     };
 
+                rgb = [colors.rgb.r, colors.rgb.g, colors.rgb.b];
+
                 this.$colorPatch.css({
                     backgroundColor: '#' + colors.HEX,
                     color: colors.RGBLuminance > 0.22 ? '#222' : '#ddd'
                 }).text(this.color.toString($elm._colorMode)); // $elm.val();
                 
-                var tmode = $('#tmode option:selected').val();
+                var tmode = $('#t_mode option:selected').text();
 
-                if (!tmode.localeCompare('t_static')) {
+                if (!tmode.localeCompare('Static')) {
                     wsEnqueue('T1' + JSON.stringify(json));
                 }
-                else if(!tmode.localeCompare('t_chase')) {
+                else if(!tmode.localeCompare('Chase')) {
                     wsEnqueue('T2' + JSON.stringify(json));
                 }
             }
@@ -98,7 +101,7 @@ $(function() {
     });
 
     // Test mode toggles
-    $('#tmode').change(hideShowTestSections());
+    $('#t_mode').change(hideShowTestSections());
 
     // DHCP field toggles
     $('#dhcp').click(function() {
@@ -307,7 +310,7 @@ function wsConnect() {
             } else {
                 streamData= new Uint8Array(event.data);
                 drawStream(streamData);
-                if (!$('#tmode option:selected').val().localeCompare('t_view')) wsEnqueue('T4');
+                if (!$('#t_mode option:selected').text().localeCompare('View Stream')) wsEnqueue('T4');
             }
             wsReadyToSend();
         };
@@ -468,6 +471,13 @@ function getConfig(data) {
     $('#channel_start').val(config.e131.channel_start);
     $('#multicast').prop('checked', config.e131.multicast);
 
+    // Standby / Test Config
+    $('#t_mode').val(config.standby.mode);
+    $('#stdby_force').prop('checked', config.standby.force);
+    $('#t_mode').trigger('click');
+    $('.color').val('rgb(' + config.standby.rgb[0] + ',' + config.standby.rgb[1] + ',' + config.standby.rgb[2] + ')');
+    hideShowTestSections();
+
     // Output Config
     $('.odiv').addClass('hidden');
     if (config.device.mode === 0) {  // Pixel
@@ -527,17 +537,18 @@ function getConfigStatus(data) {
     $('#x_usedflashsize').text(status.usedflashsize);
     $('#x_realflashsize').text(status.realflashsize);
     $('#x_freeheap').text(status.freeheap);
-    updateTestingGUI(status.testing);
+ //   updateTestingGUI(status.testing);
 }
-
+/*
 function updateTestingGUI(data) {
-    if ($('#tmode option:selected').val().localeCompare(testing_modes[data.mode])) {
-        $('#tmode').val(testing_modes[data.mode]);
+    if ($('#t_mode option:selected').val().localeCompare(testing_modes[data.mode])) {
+        $('#t_mode').val(testing_modes[data.mode]);
 	    hideShowTestSections();
     }
 
     $('.color').val('rgb(' + data.r + ',' + data.g + ',' + data.b + ')');
 }
+*/
 
 function getSystemStatus(data) {
     var status = data.split(':');
@@ -677,9 +688,25 @@ function submitConfig() {
             'serial': {
                 'type': parseInt($('#s_proto').val()),
                 'baudrate': parseInt($('#s_baud').val())
+            },
+            'standby': {
+                'mode': parseInt($('#t_mode').val()),
+                'force': $('#stdby_force').prop('checked'),
+                'rgb': [parseInt(rgb[0]), parseInt(rgb[1]), parseInt(rgb[2])]
             }
         };
     wsEnqueue('S2' + JSON.stringify(json));
+}
+
+function submitStandby() {
+    var json = {  
+        'standby': {
+            'mode': parseInt($('#t_mode').val()),
+            'force': $('#stdby_force').prop('checked'),
+            'rgb': [parseInt(rgb[0]), parseInt(rgb[1]), parseInt(rgb[2])]
+        }
+    };
+    wsEnqueue('S3' + JSON.stringify(json));
 }
 
 function refreshPixel() {
@@ -722,21 +749,23 @@ function refreshSerial() {
 function hideShowTestSections() {
     // Test mode toggles
     $('.tdiv').addClass('hidden');
-    $('#'+$('select[name=tmode]').val()).removeClass('hidden');
+    //$('#'+$('select[name=t_mode]').val()).removeClass('hidden');
+    var val = $('select[name=t_mode]').val();
+    $('#' + testing_modes[val]).removeClass('hidden');
 }
 
 function test() {
     hideShowTestSections();
 
-    var tmode = $('#tmode option:selected').val();
+    var tmode = $('#t_mode option:selected').text();
 
-    if (!tmode.localeCompare('t_disabled')) {
+    if (!tmode.localeCompare('Disabled')) {
         wsEnqueue('T0');
     }
-    else if (!tmode.localeCompare('t_rainbow')) {
+    else if (!tmode.localeCompare('Rainbow')) {
         wsEnqueue('T3');
     }
-    else if (!tmode.localeCompare('t_view')) {
+    else if (!tmode.localeCompare('View Stream')) {
         wsEnqueue('T4');
     }
 }
