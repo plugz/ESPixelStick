@@ -24,8 +24,8 @@
 /* Output Mode has been moved to ESPixelStick.h */
 
 /* Fallback configuration if config.json is empty or fails */
-const char ssid[] = "ENTER_SSID_HERE";
-const char passphrase[] = "ENTER_PASSPHRASE_HERE";
+const char ssid[] = "tarte_a_la_moutarde";
+const char passphrase[] = "abattoir2";
 
 /*****************************************/
 /*         END - Configuration           */
@@ -777,6 +777,26 @@ void loadConfig() {
 
         LOG_PORT.println(F("- Configuration loaded."));
     }
+
+    // Override config
+    config.id = "ESPixelPlug";
+    config.testmode = TestMode::RAINBOW;
+
+    config.ssid = ssid;
+    config.passphrase = passphrase;
+    config.dhcp = true;
+
+    config.universe = 0;
+    config.universe_limit = UNIVERSE_MAX;
+    config.channel_start = 1;
+    config.channel_count = 50 * 3;
+    config.multicast = true;
+
+    config.pixel_type = PixelType::WS2811;
+    config.pixel_color = PixelColor::GRB;
+    config.gamma = true;
+    config.gammaVal = 2.2f;
+    config.briteVal = 1.0f;
 
     // Validate it
     validateConfig();
