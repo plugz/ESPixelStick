@@ -736,7 +736,7 @@ void loadConfig() {
 
     // Override config
     config.id = "ESPixelPlug";
-    config.testmode = TestMode::RAINBOW;
+    config.testmode = TestMode::DISABLED;
 
     config.ssid = ssid;
     config.passphrase = passphrase;
