@@ -174,7 +174,6 @@ void setup() {
     // Load configuration from SPIFFS and set Hostname
     loadConfig();
     WiFi.hostname(config.hostname);
-    config.testmode = TestMode::DISABLED;
 
     // Setup WiFi Handlers
     wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
