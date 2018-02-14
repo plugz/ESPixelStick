@@ -745,7 +745,7 @@ void loadConfig() {
     config.universe = 0;
     config.universe_limit = UNIVERSE_MAX;
     config.channel_start = 1;
-    config.channel_count = 50 * 3;
+    config.channel_count = 120 * 3;
     config.multicast = true;
 
     config.pixel_type = PixelType::WS2811;
