@@ -44,6 +44,7 @@ const char passphrase[] = "abattoir2";
 #include <SPI.h>
 #include "ESPixelStick.h"
 #include "EFUpdate.h"
+#include "Fixture.hpp"
 #include "wshandler.h"
 #include "pwm.h"
 #include "gamma.h"
@@ -118,6 +119,7 @@ Ticker              mqttTicker; // Ticker to handle MQTT
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
+Fixture fixture;
 #elif defined(ESPS_MODE_SERIAL)
 SerialDriver    serial;         // Serial object
 #else
@@ -597,6 +599,7 @@ void updateConfig() {
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
+    fixture.begin(&pixels);
 #elif defined(ESPS_MODE_SERIAL)
     serial.begin(&SEROUT_PORT, config.serial_type, config.channel_count, config.baudrate);
 #endif
@@ -937,14 +940,15 @@ void loop() {
                     buffloc = config.channel_start - 1;
                 }
 
-                for (int i = dataStart; i < dataStop; i++) {
-#if defined(ESPS_MODE_PIXEL)
-                    pixels.setValue(i, data[buffloc]);
-#elif defined(ESPS_MODE_SERIAL)
-                    serial.setValue(i, data[buffloc]);
-#endif
-                    buffloc++;
-                }
+                fixture.updateInput(data + dataStart, dataStop - dataStart);
+//                for (int i = dataStart; i < dataStop; i++) {
+//#if defined(ESPS_MODE_PIXEL)
+//                    pixels.setValue(i, data[buffloc]);
+//#elif defined(ESPS_MODE_SERIAL)
+//                    serial.setValue(i, data[buffloc]);
+//#endif
+//                    buffloc++;
+//                }
             }
         }
     } else {  // Other testmodes

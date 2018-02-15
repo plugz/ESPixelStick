@@ -107,6 +107,10 @@ class PixelDriver {
         return (micros() - startTime) >= refreshTime;
     }
 
+    inline uint16_t getNumPixels() const {
+        return numPixels;
+    }
+
  private:
     PixelType  type;            // Pixel type
     PixelColor color;           // Color Order
