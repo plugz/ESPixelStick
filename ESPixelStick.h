@@ -68,9 +68,12 @@ const char BUILD_DATE[] = __DATE__;
 class NoSerialClass
 {
 public:
-    void begin() {}
-    void print(...) {}
-    void println() {}
+    template<typename... T>
+    void begin(T...) {}
+    template<typename... T>
+    void print(T...) {}
+    template<typename... T>
+    void println(T...) {}
 };
 NoSerialClass NoSerial;
 #define LOG_PORT NoSerial
