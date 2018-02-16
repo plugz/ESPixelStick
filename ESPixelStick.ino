@@ -1039,6 +1039,7 @@ void loop() {
         }
     }
 
+    fixture.refreshPixels();
 /* Streaming refresh */
 #if defined(ESPS_MODE_PIXEL)
     if (pixels.canRefresh())
