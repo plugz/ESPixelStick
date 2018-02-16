@@ -38,6 +38,7 @@ const char BUILD_DATE[] = __DATE__;
 /*         END - Configuration           */
 /*****************************************/
 
+#include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
 #include <AsyncMqttClient.h>
@@ -75,7 +76,7 @@ public:
     template<typename... T>
     void println(T...) {}
 };
-NoSerialClass NoSerial;
+extern NoSerialClass NoSerial;
 #define LOG_PORT NoSerial
 #endif
 
