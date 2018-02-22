@@ -11,7 +11,7 @@ enum class FixtureMode
 {
     SIMPLE, // RGB, RGB, RGB.....
     R_G_B_LEVELS, // 1 RGB for all pixels, then brightness of each pixel
-
+    DEMO,
 };
 
 class Fixture
@@ -23,9 +23,20 @@ public:
 private:
     void updateInputSimple(uint8_t const* data);
     void updateInputRGBLevels(uint8_t const* data);
+    void updateInputDemo(uint8_t const* data);
     unsigned int getNumChannels() const;
+    void refreshPixelsDemo();
     PixelDriver* _pixels = nullptr;
-    FixtureMode _mode = FixtureMode::SIMPLE;
+    FixtureMode _mode;
+
+    long int demoPrevColorMillis = 0;
+    long int demoPrevModeMillis = 0;
+    int demoCurrentColorIdx = 0;
+    int demoCurrentModeIdx = 0;
+    void refreshPixelsDemoPlainSwitch(int colorAdvance);
+    void refreshPixelsDemoPlainFade(int colorAdvance);
+    void refreshPixelsDemoSnake(int colorAdvance);
+    void refreshPixelsDemoSnakeFade(int colorAdvance);
 };
 
 #endif
