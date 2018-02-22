@@ -41,12 +41,12 @@ void Fixture::updateInputRGBLevels(uint8_t const* data)
     int g = data[1];
     int b = data[2];
     unsigned int pixelIdx = 0;
-    for (unsigned int i = 3; i < getNumChannels(); ++i)
+    for (unsigned int i = 0; i < getNumChannels() - 3; ++i)
     {
-        int brightness = data[i];
-        _pixels->setValue((i - 3) + 0, (r * brightness) / 255);
-        _pixels->setValue((i - 3) + 1, (g * brightness) / 255);
-        _pixels->setValue((i - 3) + 2, (b * brightness) / 255);
+        int brightness = data[i + 3];
+        _pixels->setValue(i * 3 + 0, (r * brightness) / 255);
+        _pixels->setValue(i * 3 + 1, (g * brightness) / 255);
+        _pixels->setValue(i * 3 + 2, (b * brightness) / 255);
     }
 }
 
