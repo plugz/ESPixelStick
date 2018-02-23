@@ -121,10 +121,10 @@ enum class DemoColor
 
 DemoColor demoColors[] = {
     DemoColor::RED,
-    DemoColor::YELLOW,
     DemoColor::GREEN,
-    DemoColor::CYAN,
     DemoColor::BLUE,
+    DemoColor::YELLOW,
+    DemoColor::CYAN,
     DemoColor::MAGENTA,
     DemoColor::WHITE
 };
@@ -137,6 +137,7 @@ void Fixture::refreshPixelsDemo()
     demoCurrentColorIdx += colorAdvance / 5000;
     demoCurrentColorIdx %= ARRAYSIZE(demoColors);
     demoPrevColorMillis += (colorAdvance / 5000) * 5000;
+    colorAdvance -= (colorAdvance / 5000) * 5000;
     long int modeAdvance = currentMillis - demoPrevModeMillis;
     demoCurrentModeIdx += modeAdvance / (5000 * ARRAYSIZE(demoColors));
     demoCurrentModeIdx %= ARRAYSIZE(demoModes);
@@ -196,7 +197,7 @@ void Fixture::refreshPixelsDemoSnake(int colorAdvance)
     int position = (_pixels->getNumPixels() * (2500 - std::abs(2500 - colorAdvance))) / 2500;
     for (unsigned int i = 0; i < _pixels->getNumPixels(); ++i)
     {
-        if (std::abs(position - i) < 4)
+        if (std::abs(position - (int)i) < 4)
         {
             _pixels->setValue(i * 3 + 0, red);
             _pixels->setValue(i * 3 + 1, green);
@@ -219,9 +220,9 @@ void Fixture::refreshPixelsDemoSnakeFade(int colorAdvance)
     int position = (_pixels->getNumPixels() * colorAdvance) / 5000;
     for (unsigned int i = 0; i < _pixels->getNumPixels(); ++i)
     {
-        int r = (red * std::abs(position - i)) / _pixels->getNumPixels();
-        int g = (red * std::abs(position - i)) / _pixels->getNumPixels();
-        int b = (red * std::abs(position - i)) / _pixels->getNumPixels();
+        int r = (red * (_pixels->getNumPixels() - std::abs(position - (int)i))) / _pixels->getNumPixels();
+        int g = (green * (_pixels->getNumPixels() - std::abs(position - (int)i))) / _pixels->getNumPixels();
+        int b = (blue * (_pixels->getNumPixels() - std::abs(position - (int)i))) / _pixels->getNumPixels();
         _pixels->setValue(i * 3 + 0, r);
         _pixels->setValue(i * 3 + 1, g);
         _pixels->setValue(i * 3 + 2, b);
