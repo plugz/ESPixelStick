@@ -62,15 +62,20 @@ void Fixture::updateInputDemo(uint8_t const*)
 
 void Fixture::refreshPixels()
 {
-    switch (_mode)
+    unsigned long currentMillis = millis();
+    if (currentMillis - _prevUpdateMillis > 20) // 50fps
     {
-        case FixtureMode::SIMPLE:
-        default:
-        case FixtureMode::R_G_B_LEVELS:
-            break;
-        case FixtureMode::DEMO:
-            refreshPixelsDemo();
-            break;
+        _prevUpdateMillis += 20;
+        switch (_mode)
+        {
+            case FixtureMode::SIMPLE:
+            default:
+            case FixtureMode::R_G_B_LEVELS:
+                break;
+            case FixtureMode::DEMO:
+                refreshPixelsDemo();
+                break;
+        }
     }
 }
 
