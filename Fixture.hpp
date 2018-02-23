@@ -28,6 +28,7 @@ private:
     void refreshPixelsDemo();
     PixelDriver* _pixels = nullptr;
     FixtureMode _mode;
+    unsigned long _prevUpdateMillis = 0;
 
     long int demoPrevColorMillis = 0;
     long int demoPrevModeMillis = 0;
