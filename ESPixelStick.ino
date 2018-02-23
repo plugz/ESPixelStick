@@ -70,7 +70,9 @@ static void _u0_putc(char c){
 //
 /////////////////////////////////////////////////////////
 
+#ifndef LOG_DEBUG
 NoSerialClass NoSerial;
+#endif
 
 // MQTT State
 const char MQTT_LIGHT_STATE_TOPIC[] = "/light/status";
@@ -895,6 +897,33 @@ void setStatic(uint8_t r, uint8_t g, uint8_t b) {
 //  Main Loop
 //
 /////////////////////////////////////////////////////////
+static long int previousDisplayMillis = 0;
+static int refreshCount = 0;
+static int loopCount = 0;
+static bool updateFixture = true;
+
+static void displayFreq()
+{
+    long int currentMillis = millis();
+    // 10s
+    if (currentMillis - previousDisplayMillis > 10000)
+    {
+        int elapsedTime = currentMillis - previousDisplayMillis;
+
+        LOG_PORT.print(updateFixture ? "with fixture" : "without fixture");
+        LOG_PORT.print(" pixelsRefresh: ");
+        LOG_PORT.print(refreshCount, DEC);
+        LOG_PORT.print(", loops: ");
+        LOG_PORT.print(loopCount);
+        LOG_PORT.println();
+
+        previousDisplayMillis = currentMillis;
+        updateFixture = !updateFixture;
+        refreshCount = 0;
+        loopCount = 0;
+    }
+}
+
 void loop() {
     e131_packet_t packet;
 
@@ -1041,11 +1070,15 @@ void loop() {
         }
     }
 
-    fixture.refreshPixels();
+    if (updateFixture)
+        fixture.refreshPixels();
+    ++loopCount;
 /* Streaming refresh */
 #if defined(ESPS_MODE_PIXEL)
-    if (pixels.canRefresh())
+    if (pixels.canRefresh()) {
         pixels.show();
+        ++refreshCount;
+    }
 #elif defined(ESPS_MODE_SERIAL)
     if (serial.canRefresh())
         serial.show();
@@ -1053,6 +1086,8 @@ void loop() {
 
 /* Update the PWM outputs */
 #if defined(ESPS_SUPPORT_PWM)
-  handlePWM();
+    handlePWM();
 #endif
+
+    displayFreq();
 }
