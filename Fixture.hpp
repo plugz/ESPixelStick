@@ -35,6 +35,7 @@ private:
     int demoCurrentColorIdx = 0;
     int demoCurrentModeIdx = 0;
     void refreshPixelsDemoPlainSwitch(int colorAdvance);
+    void refreshPixelsDemoPlainBlink(int colorAdvance);
     void refreshPixelsDemoPlainFade(int colorAdvance);
     void refreshPixelsDemoSnake(int colorAdvance);
     void refreshPixelsDemoSnakeFade(int colorAdvance);

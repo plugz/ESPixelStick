@@ -96,16 +96,19 @@ unsigned int Fixture::getNumChannels() const
 enum class DemoMode
 {
     PLAINSWITCH,
+    PLAINBLINK,
     PLAINFADE,
     SNAKE,
     SNAKEFADE
 };
 
-DemoMode demoModes[] = {
+static DemoMode demoModes[] = {
     DemoMode::PLAINSWITCH,
     DemoMode::PLAINFADE,
-    DemoMode::SNAKE,
-    DemoMode::SNAKEFADE
+    DemoMode::PLAINBLINK,
+    DemoMode::PLAINFADE,
+//    DemoMode::SNAKE,
+//    DemoMode::SNAKEFADE
 };
 
 enum class DemoColor
@@ -119,34 +122,39 @@ enum class DemoColor
     WHITE = 0xffffff,
 };
 
-DemoColor demoColors[] = {
-    DemoColor::RED,
-    DemoColor::GREEN,
-    DemoColor::BLUE,
-    DemoColor::YELLOW,
-    DemoColor::CYAN,
-    DemoColor::MAGENTA,
+static DemoColor demoColors[] = {
+//    DemoColor::RED,
+//    DemoColor::GREEN,
+//    DemoColor::BLUE,
+//    DemoColor::YELLOW,
+//    DemoColor::CYAN,
+//    DemoColor::MAGENTA,
     DemoColor::WHITE
 };
 
-// 5000ms switch
+// 10000ms switch
+#define DEMO_SWITCHTIME 10000
+
 void Fixture::refreshPixelsDemo()
 {
     long int currentMillis = millis();
     long int colorAdvance = currentMillis - demoPrevColorMillis;
-    demoCurrentColorIdx += colorAdvance / 5000;
+    demoCurrentColorIdx += colorAdvance / DEMO_SWITCHTIME;
     demoCurrentColorIdx %= ARRAYSIZE(demoColors);
-    demoPrevColorMillis += (colorAdvance / 5000) * 5000;
-    colorAdvance -= (colorAdvance / 5000) * 5000;
+    demoPrevColorMillis += (colorAdvance / DEMO_SWITCHTIME) * DEMO_SWITCHTIME;
+    colorAdvance -= (colorAdvance / DEMO_SWITCHTIME) * DEMO_SWITCHTIME;
     long int modeAdvance = currentMillis - demoPrevModeMillis;
-    demoCurrentModeIdx += modeAdvance / (5000 * ARRAYSIZE(demoColors));
+    demoCurrentModeIdx += modeAdvance / (DEMO_SWITCHTIME * ARRAYSIZE(demoColors));
     demoCurrentModeIdx %= ARRAYSIZE(demoModes);
-    demoPrevModeMillis += (modeAdvance / (5000 * ARRAYSIZE(demoColors))) * (5000 * ARRAYSIZE(demoColors));
+    demoPrevModeMillis += (modeAdvance / (DEMO_SWITCHTIME * ARRAYSIZE(demoColors))) * (DEMO_SWITCHTIME * ARRAYSIZE(demoColors));
 
     switch (demoModes[demoCurrentModeIdx])
     {
         case DemoMode::PLAINSWITCH:
             refreshPixelsDemoPlainSwitch(colorAdvance);
+            break;
+        case DemoMode::PLAINBLINK:
+            refreshPixelsDemoPlainBlink(colorAdvance);
             break;
         case DemoMode::PLAINFADE:
             refreshPixelsDemoPlainFade(colorAdvance);
@@ -173,14 +181,30 @@ void Fixture::refreshPixelsDemoPlainSwitch(int)
     }
 }
 
+void Fixture::refreshPixelsDemoPlainBlink(int colorAdvance)
+{
+    int red = ((int)demoColors[demoCurrentColorIdx] >> 16) & 0xff;
+    int green = ((int)demoColors[demoCurrentColorIdx] >> 8) & 0xff;
+    int blue = ((int)demoColors[demoCurrentColorIdx]) & 0xff;
+    red = red * (((colorAdvance * 10) / DEMO_SWITCHTIME) % 2);
+    green = green * (((colorAdvance * 10) / DEMO_SWITCHTIME) % 2);
+    blue = blue * (((colorAdvance * 10) / DEMO_SWITCHTIME) % 2);
+    for (unsigned int i = 0; i < _pixels->getNumPixels(); ++i)
+    {
+        _pixels->setValue(i * 3 + 0, red);
+        _pixels->setValue(i * 3 + 1, green);
+        _pixels->setValue(i * 3 + 2, blue);
+    }
+}
+
 void Fixture::refreshPixelsDemoPlainFade(int colorAdvance)
 {
     int red = ((int)demoColors[demoCurrentColorIdx] >> 16) & 0xff;
     int green = ((int)demoColors[demoCurrentColorIdx] >> 8) & 0xff;
     int blue = ((int)demoColors[demoCurrentColorIdx]) & 0xff;
-    red = (red * (2500 - std::abs(2500 - colorAdvance))) / 2500;
-    green = (green * (2500 - std::abs(2500 - colorAdvance))) / 2500;
-    blue = (blue * (2500 - std::abs(2500 - colorAdvance))) / 2500;
+    red = (red * ((DEMO_SWITCHTIME / 2) - std::abs((DEMO_SWITCHTIME / 2) - colorAdvance))) / (DEMO_SWITCHTIME / 2);
+    green = (green * ((DEMO_SWITCHTIME / 2) - std::abs((DEMO_SWITCHTIME / 2) - colorAdvance))) / (DEMO_SWITCHTIME / 2);
+    blue = (blue * ((DEMO_SWITCHTIME / 2) - std::abs((DEMO_SWITCHTIME / 2) - colorAdvance))) / (DEMO_SWITCHTIME / 2);
     for (unsigned int i = 0; i < _pixels->getNumPixels(); ++i)
     {
         _pixels->setValue(i * 3 + 0, red);
@@ -194,7 +218,7 @@ void Fixture::refreshPixelsDemoSnake(int colorAdvance)
     int red = ((int)demoColors[demoCurrentColorIdx] >> 16) & 0xff;
     int green = ((int)demoColors[demoCurrentColorIdx] >> 8) & 0xff;
     int blue = ((int)demoColors[demoCurrentColorIdx]) & 0xff;
-    int position = (_pixels->getNumPixels() * (2500 - std::abs(2500 - colorAdvance))) / 2500;
+    int position = (_pixels->getNumPixels() * ((DEMO_SWITCHTIME / 2) - std::abs((DEMO_SWITCHTIME / 2) - colorAdvance))) / (DEMO_SWITCHTIME / 2);
     for (unsigned int i = 0; i < _pixels->getNumPixels(); ++i)
     {
         if (std::abs(position - (int)i) < 4)
@@ -217,7 +241,7 @@ void Fixture::refreshPixelsDemoSnakeFade(int colorAdvance)
     int red = ((int)demoColors[demoCurrentColorIdx] >> 16) & 0xff;
     int green = ((int)demoColors[demoCurrentColorIdx] >> 8) & 0xff;
     int blue = ((int)demoColors[demoCurrentColorIdx]) & 0xff;
-    int position = (_pixels->getNumPixels() * colorAdvance) / 5000;
+    int position = (_pixels->getNumPixels() * colorAdvance) / DEMO_SWITCHTIME;
     for (unsigned int i = 0; i < _pixels->getNumPixels(); ++i)
     {
         int r = (red * (_pixels->getNumPixels() - std::abs(position - (int)i))) / _pixels->getNumPixels();
