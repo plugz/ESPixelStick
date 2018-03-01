@@ -70,7 +70,9 @@ static void _u0_putc(char c){
 //
 /////////////////////////////////////////////////////////
 
+#ifndef __DEBUG__
 NoSerialClass NoSerial;
+#endif
 
 // MQTT State
 const char MQTT_LIGHT_STATE_TOPIC[] = "/light/status";
@@ -1044,8 +1046,48 @@ void loop() {
     fixture.refreshPixels();
 /* Streaming refresh */
 #if defined(ESPS_MODE_PIXEL)
-    if (pixels.canRefresh())
+    static int elapsedTotal = 0;
+    static int elapsedFromStartTotal = 0;
+    static int writeCountTotal = 0;
+    static int writeBytesTotal = 0;
+    static int writeMinDelayTotal = 0;
+    static int elapsedCount = 0;
+    if (pixels.canRefresh()) {
+        elapsedTotal += pixels.getElapsedTime();
+        elapsedFromStartTotal += pixels.getElapsedTimeFromStart();
+        writeCountTotal += pixels.getWriteCount();
+        pixels.resetWriteCount();
+        writeBytesTotal += pixels.getWriteBytes();
+        pixels.resetWriteBytes();
+        writeMinDelayTotal += pixels.getFillMinDelay();
+        pixels.resetFillMinDelay();
+        ++elapsedCount;
+        if (elapsedCount == 1000)
+        {
+            LOG_PORT.print("elapsed ");
+            LOG_PORT.print(elapsedTotal / 1000, DEC);
+            LOG_PORT.print(", from start ");
+            LOG_PORT.print(elapsedFromStartTotal / 1000, DEC);
+            LOG_PORT.println();
+            LOG_PORT.print("buffer size ");
+            LOG_PORT.print(pixels.getBufSize(), DEC);
+            LOG_PORT.print(", min delay ");
+            LOG_PORT.print(writeMinDelayTotal / 1000, DEC);
+            LOG_PORT.println();
+            LOG_PORT.print("write count ");
+            LOG_PORT.print(writeCountTotal / 1000, DEC);
+            LOG_PORT.print(", write bytes ");
+            LOG_PORT.print(writeBytesTotal / 1000, DEC);
+            LOG_PORT.println();
+            elapsedTotal = 0;
+            elapsedFromStartTotal = 0;
+            elapsedCount = 0;
+            writeCountTotal = 0;
+            writeBytesTotal = 0;
+            writeMinDelayTotal = 0;
+        }
         pixels.show();
+    }
 #elif defined(ESPS_MODE_SERIAL)
     if (serial.canRefresh())
         serial.show();

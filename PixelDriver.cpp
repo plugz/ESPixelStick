@@ -21,6 +21,7 @@
 #include <utility>
 #include <algorithm>
 #include "PixelDriver.h"
+#include "ESPixelStick.h"
 
 extern "C" {
 #include <eagle_soc.h>
@@ -47,6 +48,9 @@ int PixelDriver::begin(PixelType type) {
 
 int PixelDriver::begin(PixelType type, PixelColor color, uint16_t length) {
     int retval = true;
+
+    updateOngoing = false;
+    updateDoneTime = 0;
 
     this->type = type;
     this->color = color;
@@ -122,7 +126,7 @@ void PixelDriver::ws2811_init() {
     ETS_UART_INTR_DISABLE();
 
     /* Atttach interrupt handler */
-    ETS_UART_INTR_ATTACH(handleWS2811, NULL);
+    ETS_UART_INTR_ATTACH(handleWS2811, this);
 
     /* Set TX FIFO trigger. 80 bytes gives 200 microsecs to refill the FIFO */
     WRITE_PERI_REG(UART_CONF1(UART), 80 << UART_TXFIFO_EMPTY_THRHD_S);
@@ -181,14 +185,22 @@ void PixelDriver::updateOrder(PixelColor color) {
 }
 
 void ICACHE_RAM_ATTR PixelDriver::handleWS2811(void *param) {
+    PixelDriver* pixelDriver = (PixelDriver*)param;
     /* Process if UART1 */
     if (READ_PERI_REG(UART_INT_ST(UART1))) {
         // Fill the FIFO with new data
-        uart_buffer = fillWS2811(uart_buffer, uart_buffer_tail);
+        uint8_t const* uart_buffer_backup = uart_buffer;
+        uart_buffer = pixelDriver->fillWS2811(uart_buffer, uart_buffer_tail);
 
         // Disable TX interrupt when done
         if (uart_buffer == uart_buffer_tail)
+        {
             CLEAR_PERI_REG_MASK(UART_INT_ENA(UART1), UART_TXFIFO_EMPTY_INT_ENA);
+            LOG_PORT.print("last bytes: ");
+            LOG_PORT.println(uart_buffer - uart_buffer_backup, DEC);
+            pixelDriver->updateOngoing = false;
+            pixelDriver->updateDoneTime = micros();
+        }
 
         // Clear all interrupts flags (just in case)
         WRITE_PERI_REG(UART_INT_CLR(UART1), 0xffff);
@@ -204,6 +216,16 @@ const uint8_t* ICACHE_RAM_ATTR PixelDriver::fillWS2811(const uint8_t *buff,
     uint8_t avail = (UART_TX_FIFO_SIZE - getFifoLength()) / 4;
     if (tail - buff > avail)
         tail = buff + avail;
+
+    uint8_t const* prevBuf = buff;
+
+    static int prevTime = 0;
+    int currentTime = micros();
+    int writeDelay = currentTime - prevTime;
+    if (writeDelay < fillMinDelay)
+        fillMinDelay = writeDelay;
+    prevTime = currentTime;
+    ++writeCount;
 
     if (ws2811gamma) {
         while (buff + 2 < tail) {
@@ -250,6 +272,9 @@ const uint8_t* ICACHE_RAM_ATTR PixelDriver::fillWS2811(const uint8_t *buff,
             buff += 3;
         }
     }
+
+    writeBytes += buff - prevBuf;
+
     return buff;
 }
 
@@ -261,7 +286,8 @@ void ICACHE_RAM_ATTR PixelDriver::show() {
         uart_buffer_tail = pixdata + szBuffer;
         SET_PERI_REG_MASK(UART_INT_ENA(1), UART_TXFIFO_EMPTY_INT_ENA);
 
-        startTime = micros();
+        updateOngoing = true;
+        updateStartTime = micros();
 
         // Copy the pixels to the idle buffer and swap them
         memcpy(asyncdata, pixdata, szBuffer);
@@ -271,7 +297,7 @@ void ICACHE_RAM_ATTR PixelDriver::show() {
         uint32_t pTime = 0;
 
         // Build a GECE packet
-        startTime = micros();
+        updateDoneTime = micros();
         for (uint8_t i = 0; i < numPixels; i++) {
             packet = (packet & ~GECE_ADDRESS_MASK) | (i << 20);
             packet = (packet & ~GECE_BRIGHTNESS_MASK) |

@@ -104,8 +104,41 @@ class PixelDriver {
 
     /* Drop the update if our refresh rate is too high */
     inline bool canRefresh() {
-        return (micros() - startTime) >= refreshTime;
+        return micros() - updateStartTime >= refreshTime;
+//        return (!updateOngoing)
+//            && ((micros() - updateDoneTime) >= refreshTime);
+            //&& ((micros() - updateStartTime) >= refreshTime);
     }
+
+    int getElapsedTime() {
+        return micros() - updateDoneTime;
+    }
+    int getElapsedTimeFromStart() {
+        return micros() - updateStartTime;
+    }
+
+    int getBufSize() {
+        return (UART_TX_FIFO_SIZE - getFifoLength()) / 4;
+    }
+    int getWriteCount() {
+        return writeCount;
+    }
+    void resetWriteCount() {
+        writeCount = 0;
+    }
+    int getWriteBytes() {
+        return writeBytes;
+    }
+    void resetWriteBytes() {
+        writeBytes = 0;
+    }
+    int getFillMinDelay() {
+        return fillMinDelay;
+    }
+    void resetFillMinDelay() {
+        fillMinDelay = 100000000;
+    }
+
 
     inline uint16_t getNumPixels() const {
         return numPixels;
@@ -120,7 +153,12 @@ class PixelDriver {
     uint8_t     *pbuff;         // GECE Packet Buffer
     uint16_t    numPixels;      // Number of pixels
     uint16_t    szBuffer;       // Size of Pixel buffer
-    uint32_t    startTime;      // When the last frame TX started
+    bool        updateOngoing;
+    uint32_t    updateDoneTime;
+    uint32_t updateStartTime;
+    int writeCount;
+    int writeBytes;
+    int fillMinDelay;
     uint32_t    refreshTime;    // Time until we can refresh after starting a TX
     static uint8_t    rOffset;  // Index of red byte
     static uint8_t    gOffset;  // Index of green byte
@@ -130,7 +168,7 @@ class PixelDriver {
     void gece_init();
 
     /* FIFO Handlers */
-    static const uint8_t* ICACHE_RAM_ATTR fillWS2811(const uint8_t *buff,
+    const uint8_t* ICACHE_RAM_ATTR fillWS2811(const uint8_t *buff,
             const uint8_t *tail);
 
     /* Interrupt Handlers */
