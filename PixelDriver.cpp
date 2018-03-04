@@ -257,15 +257,15 @@ void ICACHE_RAM_ATTR PixelDriver::show() {
     if (!pixdata) return;
 
     if (type == PixelType::WS2811) {
-        uart_buffer = pixdata;
-        uart_buffer_tail = pixdata + szBuffer;
-        SET_PERI_REG_MASK(UART_INT_ENA(1), UART_TXFIFO_EMPTY_INT_ENA);
-
-        startTime = micros();
-
         // Copy the pixels to the idle buffer and swap them
         memcpy(asyncdata, pixdata, szBuffer);
         std::swap(asyncdata, pixdata);
+
+        uart_buffer = asyncdata;
+        uart_buffer_tail = asyncdata + szBuffer;
+        SET_PERI_REG_MASK(UART_INT_ENA(1), UART_TXFIFO_EMPTY_INT_ENA);
+
+        startTime = micros();
     } else if (type == PixelType::GECE) {
         uint32_t packet = 0;
         uint32_t pTime = 0;
