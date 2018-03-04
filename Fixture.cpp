@@ -76,6 +76,15 @@ void Fixture::refreshPixels()
                 refreshPixelsDemo();
                 break;
         }
+        setAlwaysOn();
+    }
+}
+
+void Fixture::setAlwaysOn() {
+    for (int pixelIdx : {0, 40, 80}) {
+        _pixels->setValue(pixelIdx * 3 + 0, 255);
+        _pixels->setValue(pixelIdx * 3 + 1, 255);
+        _pixels->setValue(pixelIdx * 3 + 2, 255);
     }
 }
 

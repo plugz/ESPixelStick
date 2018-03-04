@@ -21,6 +21,7 @@ public:
     void updateInput(uint8_t const* data, unsigned int size);
     void refreshPixels();
 private:
+    void setAlwaysOn();
     void updateInputSimple(uint8_t const* data);
     void updateInputRGBLevels(uint8_t const* data);
     void updateInputDemo(uint8_t const* data);
