@@ -60,7 +60,7 @@ void Fixture::updateInputDemo(uint8_t const*)
 {
 }
 
-void Fixture::refreshPixels()
+bool Fixture::refreshPixels()
 {
     unsigned long currentMillis = millis();
     if (currentMillis - _prevUpdateMillis > 20) // 50fps
@@ -77,7 +77,9 @@ void Fixture::refreshPixels()
                 break;
         }
         setAlwaysOn();
+        return true;
     }
+    return false;
 }
 
 void Fixture::setAlwaysOn() {
@@ -115,9 +117,8 @@ static DemoMode demoModes[] = {
     DemoMode::PLAINSWITCH,
     DemoMode::PLAINFADE,
     DemoMode::PLAINBLINK,
-    DemoMode::PLAINFADE,
-//    DemoMode::SNAKE,
-//    DemoMode::SNAKEFADE
+    DemoMode::SNAKE,
+    DemoMode::SNAKEFADE
 };
 
 enum class DemoColor
@@ -133,10 +134,10 @@ enum class DemoColor
 
 static DemoColor demoColors[] = {
 //    DemoColor::RED,
-//    DemoColor::GREEN,
+    DemoColor::GREEN,
 //    DemoColor::BLUE,
-//    DemoColor::YELLOW,
-//    DemoColor::CYAN,
+    DemoColor::YELLOW,
+    DemoColor::CYAN,
 //    DemoColor::MAGENTA,
     DemoColor::WHITE
 };

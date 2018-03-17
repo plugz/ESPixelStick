@@ -19,7 +19,7 @@ class Fixture
 public:
     void begin(PixelDriver* pixels);
     void updateInput(uint8_t const* data, unsigned int size);
-    void refreshPixels();
+    bool refreshPixels();
 private:
     void setAlwaysOn();
     void updateInputSimple(uint8_t const* data);

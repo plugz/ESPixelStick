@@ -122,6 +122,7 @@ Ticker              mqttTicker; // Ticker to handle MQTT
 #if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
 Fixture fixture;
+static bool needRefresh = false;
 #elif defined(ESPS_MODE_SERIAL)
 SerialDriver    serial;         // Serial object
 #else
@@ -1041,11 +1042,14 @@ void loop() {
         }
     }
 
-    fixture.refreshPixels();
+    if (fixture.refreshPixels())
+        needRefresh = true;
 /* Streaming refresh */
 #if defined(ESPS_MODE_PIXEL)
-    if (pixels.canRefresh())
+    if (needRefresh && pixels.canRefresh()) {
         pixels.show();
+        needRefresh = false;
+    }
 #elif defined(ESPS_MODE_SERIAL)
     if (serial.canRefresh())
         serial.show();
