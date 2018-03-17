@@ -9,7 +9,7 @@
 void Fixture::begin(PixelDriver* pixels)
 {
     _pixels = pixels;
-    _mode = FixtureMode::DEMO;
+    _mode = FixtureMode::SIMPLE;
 }
 
 void Fixture::updateInput(uint8_t const* data, unsigned int size)
