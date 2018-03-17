@@ -193,6 +193,49 @@ void setup() {
             mqtt.setCredentials(config.mqtt_user.c_str(), config.mqtt_password.c_str());
     }
 
+    // Fallback to default SSID and passphrase if we fail to connect
+    initWifi();
+    if (WiFi.status() != WL_CONNECTED) {
+        LOG_PORT.println(F("*** Timeout - Reverting to default SSID ***"));
+        config.ssid = ssid;
+        config.passphrase = passphrase;
+        initWifi();
+    }
+
+    // If we fail again, go SoftAP or reboot
+    if (WiFi.status() != WL_CONNECTED) {
+        if (config.ap_fallback) {
+            LOG_PORT.println(F("**** FAILED TO ASSOCIATE WITH AP, GOING SOFTAP ****"));
+            WiFi.mode(WIFI_AP);
+            String ssid = "ESPixelStick " + String(config.hostname);
+            WiFi.softAP(ssid.c_str());
+        } else {
+            LOG_PORT.println(F("**** FAILED TO ASSOCIATE WITH AP, REBOOTING ****"));
+            ESP.restart();
+        }
+    }
+
+    wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWiFiDisconnect);
+
+    // Configure and start the web server
+    initWeb();
+
+    // Setup E1.31
+    if (config.multicast) {
+        if (e131.begin(E131_MULTICAST, config.universe,
+                uniLast - config.universe + 1)) {
+            LOG_PORT.println(F("- Multicast Enabled"));
+        }  else {
+            LOG_PORT.println(F("*** MULTICAST INIT FAILED ****"));
+        }
+    } else {
+        if (e131.begin(E131_UNICAST)) {
+            LOG_PORT.print(F("- Unicast port: "));
+            LOG_PORT.println(E131_DEFAULT_PORT);
+        } else {
+            LOG_PORT.println(F("*** UNICAST INIT FAILED ****"));
+        }
+    }
 
     // Configure the outputs
 #if defined (ESPS_SUPPORT_PWM)
