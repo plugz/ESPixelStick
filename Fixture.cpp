@@ -9,7 +9,7 @@
 void Fixture::begin(PixelDriver* pixels)
 {
     _pixels = pixels;
-    _mode = FixtureMode::SIMPLE;
+    _mode = FixtureMode::DEMO;
 }
 
 void Fixture::updateInput(uint8_t const* data, unsigned int size)
@@ -115,15 +115,15 @@ enum class DemoMode
 
 static DemoMode demoModes[] = {
     DemoMode::PLAINSWITCH,
-    DemoMode::PLAINFADE,
-    DemoMode::PLAINBLINK,
-    DemoMode::SNAKE,
-    DemoMode::SNAKEFADE
+//    DemoMode::PLAINFADE,
+//    DemoMode::PLAINBLINK,
+//    DemoMode::SNAKE,
+//    DemoMode::SNAKEFADE
 };
 
 enum class DemoColor
 {
-    RED = 0xff0000,
+    RED = 0xff4400,
     YELLOW = 0xffff00,
     GREEN = 0x00ff00,
     CYAN = 0x00ffff,
@@ -133,13 +133,13 @@ enum class DemoColor
 };
 
 static DemoColor demoColors[] = {
-//    DemoColor::RED,
-    DemoColor::GREEN,
+    DemoColor::RED,
+//    DemoColor::GREEN,
 //    DemoColor::BLUE,
-    DemoColor::YELLOW,
-    DemoColor::CYAN,
-//    DemoColor::MAGENTA,
-    DemoColor::WHITE
+//    DemoColor::YELLOW,
+//    DemoColor::CYAN,
+////    DemoColor::MAGENTA,
+//    DemoColor::WHITE
 };
 
 // 10000ms switch
