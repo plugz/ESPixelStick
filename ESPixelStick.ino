@@ -70,7 +70,9 @@ static void _u0_putc(char c){
 //
 /////////////////////////////////////////////////////////
 
+#ifdef NOSERIALCLASS
 NoSerialClass NoSerial;
+#endif
 
 // MQTT State
 const char MQTT_LIGHT_STATE_TOPIC[] = "/light/status";
