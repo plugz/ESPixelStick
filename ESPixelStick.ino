@@ -40,6 +40,7 @@ const char passphrase[] = "abattoir2";
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncE131.h>
 #include <ArduinoJson.h>
+#include <Bounce2.h>
 #include <Hash.h>
 #include <SPI.h>
 #include "ESPixelStick.h"
@@ -120,6 +121,9 @@ Ticker              wifiTicker; // Ticker to handle WiFi
 AsyncMqttClient     mqtt;       // MQTT object
 Ticker              mqttTicker; // Ticker to handle MQTT
 
+// button
+Bounce bounce;
+
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
@@ -156,7 +160,11 @@ void setup() {
     // Initial pin states
     pinMode(DATA_PIN, OUTPUT);
     digitalWrite(DATA_PIN, LOW);
+
     pinMode(BUTTON_PIN, INPUT_PULLUP);
+    bounce.attach(BUTTON_PIN, INPUT_PULLUP);
+    bounce.read();
+    bounce.interval(3);
 
     // Setup serial log port
     LOG_PORT.begin(115200);
@@ -895,14 +903,17 @@ void setStatic(uint8_t r, uint8_t g, uint8_t b) {
 
 void handleButton()
 {
-    int button_state = digitalRead(BUTTON_PIN);
-    if (button_state == LOW)
+    if (bounce.update())
     {
-        LOG_PORT.println("button state is LOW");
-    }
-    else
-    {
-        LOG_PORT.println("button state is HIGH");
+        int button_state = bounce.read();
+        if (button_state == LOW)
+        {
+            LOG_PORT.println("button state changed to LOW");
+        }
+        else
+        {
+            LOG_PORT.println("button state changed to HIGH");
+        }
     }
 }
 
