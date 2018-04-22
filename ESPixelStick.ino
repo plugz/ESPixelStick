@@ -156,6 +156,7 @@ void setup() {
     // Initial pin states
     pinMode(DATA_PIN, OUTPUT);
     digitalWrite(DATA_PIN, LOW);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     // Setup serial log port
     LOG_PORT.begin(115200);
@@ -892,6 +893,19 @@ void setStatic(uint8_t r, uint8_t g, uint8_t b) {
     }
 }
 
+void handleButton()
+{
+    int button_state = digitalRead(BUTTON_PIN);
+    if (button_state == LOW)
+    {
+        LOG_PORT.println("button state is LOW");
+    }
+    else
+    {
+        LOG_PORT.println("button state is HIGH");
+    }
+}
+
 
 /////////////////////////////////////////////////////////
 //
@@ -1043,6 +1057,8 @@ void loop() {
                 break;
         }
     }
+
+    handleButton();
 
     if (fixture.refreshPixels())
         needRefresh = true;
