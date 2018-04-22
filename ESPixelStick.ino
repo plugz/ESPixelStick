@@ -161,7 +161,6 @@ void setup() {
     pinMode(DATA_PIN, OUTPUT);
     digitalWrite(DATA_PIN, LOW);
 
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
     bounce.attach(BUTTON_PIN, INPUT_PULLUP);
     bounce.read();
     bounce.interval(3);
@@ -901,18 +900,73 @@ void setStatic(uint8_t r, uint8_t g, uint8_t b) {
     }
 }
 
+void handleButtonLongPressBegin()
+{
+    LOG_PORT.println("LONG PRESS BEGIN");
+}
+
+void handleButtonLongPressEnd()
+{
+    LOG_PORT.println("LONG PRESS END");
+}
+
+void handleButtonClick()
+{
+    LOG_PORT.println("CLICK RELEASE");
+}
+
+void handleButtonDoubleClick()
+{
+    LOG_PORT.println("DOUBLE CLICK RELEASE");
+}
+
 void handleButton()
 {
+    static bool longPressDone = false;
+    static bool clickedOnce = false;
+    static int prevTime = 0;
+    if (bounce.read() == LOW)
+    {
+        if (!longPressDone && millis() - prevTime > 500)
+        {
+            handleButtonLongPressBegin();
+            longPressDone = true;
+        }
+    }
+    else
+    {
+        if (clickedOnce && millis() - prevTime > 300)
+        {
+            handleButtonClick();
+            clickedOnce = false;
+        }
+    }
+
     if (bounce.update())
     {
-        int button_state = bounce.read();
-        if (button_state == LOW)
+        prevTime = millis();
+        if (bounce.read() == LOW)
         {
-            LOG_PORT.println("button state changed to LOW");
+            longPressDone = false;
         }
         else
         {
-            LOG_PORT.println("button state changed to HIGH");
+            if (!longPressDone)
+            {
+                if (clickedOnce)
+                {
+                    clickedOnce = false;
+                    handleButtonDoubleClick();
+                }
+                else
+                {
+                    clickedOnce = true;
+                }
+            }
+            else
+            {
+                handleButtonLongPressEnd();
+            }
         }
     }
 }
