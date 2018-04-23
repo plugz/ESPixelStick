@@ -1,5 +1,6 @@
 #include "Fixture2.hpp"
 #include "Perlin.hpp"
+#include "ESPixelStick.h"
 
 #include <iterator>
 
