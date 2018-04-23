@@ -45,7 +45,7 @@ const char passphrase[] = "abattoir2";
 #include <SPI.h>
 #include "ESPixelStick.h"
 #include "EFUpdate.h"
-#include "Fixture.hpp"
+#include "Fixture2.hpp"
 #include "wshandler.h"
 #include "pwm.h"
 #include "gamma.h"
@@ -127,7 +127,7 @@ Bounce bounce;
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
-Fixture fixture;
+Fixture2 fixture;
 static bool needRefresh = false;
 #elif defined(ESPS_MODE_SERIAL)
 SerialDriver    serial;         // Serial object
@@ -612,7 +612,11 @@ void updateConfig() {
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
-    fixture.begin(&pixels);
+    fixture.begin({Fixture2Mode::PLASMA, Fixture2Mode::SMOOTH_ON_OFF,
+                   Fixture2Mode::PING_PONG},
+                  {Fixture2Color::FLAME, Fixture2Color::GRASS,
+                   Fixture2Color::OCEAN, Fixture2Color::RAINBOW},
+                  pixels.getData(), config.channel_count / 3);
 #elif defined(ESPS_MODE_SERIAL)
     serial.begin(&SEROUT_PORT, config.serial_type, config.channel_count, config.baudrate);
 #endif
@@ -903,21 +907,25 @@ void setStatic(uint8_t r, uint8_t g, uint8_t b) {
 void handleButtonLongPressBegin()
 {
     LOG_PORT.println("LONG PRESS BEGIN");
+    fixture.startFlash(Fixture2FlashMode::STROBE);
 }
 
 void handleButtonLongPressEnd()
 {
     LOG_PORT.println("LONG PRESS END");
+    fixture.stopFlash();
 }
 
 void handleButtonClick()
 {
     LOG_PORT.println("CLICK RELEASE");
+    fixture.nextMode();
 }
 
 void handleButtonDoubleClick()
 {
     LOG_PORT.println("DOUBLE CLICK RELEASE");
+    fixture.nextColor();
 }
 
 void handleButton()
@@ -1024,7 +1032,7 @@ void loop() {
                     buffloc = config.channel_start - 1;
                 }
 
-                fixture.updateInput(data + dataStart, dataStop - dataStart);
+//                fixture.updateInput(data + dataStart, dataStop - dataStart);
 //                for (int i = dataStart; i < dataStop; i++) {
 //#if defined(ESPS_MODE_PIXEL)
 //                    pixels.setValue(i, data[buffloc]);
