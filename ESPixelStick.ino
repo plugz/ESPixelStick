@@ -124,6 +124,8 @@ Ticker              mqttTicker; // Ticker to handle MQTT
 // button
 Bounce bounce;
 
+#define LED_COUNT 50
+
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
@@ -616,7 +618,7 @@ void updateConfig() {
                    Fixture2Mode::PING_PONG},
                   {Fixture2Color::FLAME, Fixture2Color::GRASS,
                    Fixture2Color::OCEAN, Fixture2Color::RAINBOW},
-                  pixels.getData(), config.channel_count / 3);
+                  pixels.getData(), config.channel_count);
 #elif defined(ESPS_MODE_SERIAL)
     serial.begin(&SEROUT_PORT, config.serial_type, config.channel_count, config.baudrate);
 #endif
@@ -765,7 +767,7 @@ void loadConfig() {
     config.universe = 0;
     config.universe_limit = UNIVERSE_MAX;
     config.channel_start = 1;
-    config.channel_count = 120 * 3;
+    config.channel_count = LED_COUNT * 3;
     config.multicast = true;
 
     config.pixel_type = PixelType::WS2811;
