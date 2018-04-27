@@ -124,7 +124,7 @@ Ticker              mqttTicker; // Ticker to handle MQTT
 // button
 Bounce bounce;
 
-#define LED_COUNT 50
+#define LED_COUNT 60
 
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
