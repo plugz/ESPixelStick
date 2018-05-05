@@ -921,13 +921,13 @@ void handleButtonLongPressEnd()
 void handleButtonClick()
 {
     LOG_PORT.println("CLICK RELEASE");
-    fixture.nextMode();
+    fixture.nextColor();
 }
 
 void handleButtonDoubleClick()
 {
     LOG_PORT.println("DOUBLE CLICK RELEASE");
-    fixture.nextColor();
+    fixture.nextMode();
 }
 
 void handleButton()
