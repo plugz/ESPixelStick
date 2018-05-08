@@ -124,7 +124,7 @@ Ticker              mqttTicker; // Ticker to handle MQTT
 // button
 Bounce bounce;
 
-#define LED_COUNT 60
+#define LED_COUNT 40
 
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
@@ -618,7 +618,10 @@ void updateConfig() {
                    Fixture2Mode::PING_PONG},
                   {Fixture2Color::FLAME, Fixture2Color::GRASS,
                    Fixture2Color::OCEAN, Fixture2Color::RAINBOW},
-                  pixels.getData(), config.channel_count);
+                  pixels.getData(),
+                  LED_COUNT / 2, // width
+                  2, // height
+                  false); // zigzag
 #elif defined(ESPS_MODE_SERIAL)
     serial.begin(&SEROUT_PORT, config.serial_type, config.channel_count, config.baudrate);
 #endif

@@ -1,17 +1,17 @@
-#ifndef __FIXTURE_HPP__
-#define __FIXTURE_HPP__
+#ifndef __FIXTURE2_HPP__
+#define __FIXTURE2_HPP__
 
 #include <array>
 #include <cstdint>
 #include <vector>
-
-#define TARGET_FREQ_HZ 50
 
 enum Fixture2Mode
 {
     PLASMA,
     SMOOTH_ON_OFF,
     PING_PONG,
+    PING_PONG_H,
+    PING_PONG_V,
 };
 
 enum Fixture2Color
@@ -33,7 +33,9 @@ class Fixture2
     void begin(std::vector<Fixture2Mode> const& modes,
                std::vector<Fixture2Color> const& colors,
                uint8_t *pixels,
-               unsigned int channelCount);
+               unsigned int width,
+               unsigned int height = 1,
+               bool zigzag = false);
     void nextColor();
     void nextMode();
     void startFlash(Fixture2FlashMode mode);
@@ -45,6 +47,9 @@ class Fixture2
     std::vector<std::array<uint8_t, 3>> const& getColor() const;
     uint8_t* _pixels;
     unsigned int _pixelCount;
+    unsigned int _width;
+    unsigned int _height;
+    std::vector<int> _posArray;
     unsigned long _prevUpdateMillis = 0;
     std::vector<Fixture2Mode> _modes;
     std::vector<Fixture2Color> _colors;
@@ -63,9 +68,17 @@ class Fixture2
     void beginSmoothOnOff();
     void refreshPixelsSmoothOnOff();
 
-    // ping pong
+    // ping pong (single pixel)
     void beginPingPong();
     void refreshPixelsPingPong();
+
+    // ping pong (single pixel)
+    void beginPingPongH();
+    void refreshPixelsPingPongH();
+
+    // ping pong (single pixel)
+    void beginPingPongV();
+    void refreshPixelsPingPongV();
 
     // Flash strobe
     void flashStrobe();
