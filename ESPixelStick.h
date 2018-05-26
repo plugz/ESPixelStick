@@ -64,7 +64,7 @@ const char BUILD_DATE[] = __DATE__;
 #define E131_TIMEOUT    1000    /* Force refresh every second an E1.31 packet is not seen */
 #define CONNECT_TIMEOUT 15000   /* 15 seconds */
 #define REBOOT_DELAY    100     /* Delay for rebooting once reboot flag is set */
-#if 1
+#if 0
 #define LOG_PORT        Serial  /* Serial port for console logging */
 #else
 class NoSerialClass

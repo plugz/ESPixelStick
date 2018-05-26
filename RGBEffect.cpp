@@ -4,6 +4,17 @@
 #include <algorithm>
 #include <iterator>
 
+#include "ESPixelStick.h"
+#ifdef abs
+#undef abs
+#endif
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
 #define TARGET_FREQ_HZ 50
 
 void RGBEffect::begin(RGBEffectPattern pattern,
@@ -13,6 +24,8 @@ void RGBEffect::begin(RGBEffectPattern pattern,
                       unsigned int pixelCount,
                       PosArray const& posArray)
 {
+  
+        LOG_PORT.println("RGBE::begin");
     _pattern = pattern;
     _color = color;
     setMixingMode(mixingMode);
@@ -215,6 +228,8 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
 
 void RGBEffect::beginCurrentCombo()
 {
+  
+        LOG_PORT.println("RGBE::beginCurrentCombo");
     auto& colors = getColor();
 
     _gradient.clear();
@@ -223,6 +238,8 @@ void RGBEffect::beginCurrentCombo()
         unsigned int j = i + 1;
         if (j == colors.size())
             j = 0;
+            
+        LOG_PORT.println("RGBE::emplace gradient 1");
         _gradient.emplace_back(colors[i]);
         int sr = colors[i][0];
         int sg = colors[i][1];
@@ -235,15 +252,18 @@ void RGBEffect::beginCurrentCombo()
         int stepG = (eg - sg);
         int stepB = (eb - sb);
 
-        for (int s = 1; s < 300; ++s)
+        for (int s = 1; s < 15; ++s)
         {
-            int gradR = sr + ((stepR * s) / 300);
-            int gradG = sg + ((stepG * s) / 300);
-            int gradB = sb + ((stepB * s) / 300);
+            int gradR = sr + ((stepR * s) / 15);
+            int gradG = sg + ((stepG * s) / 15);
+            int gradB = sb + ((stepB * s) / 15);
+            
+        LOG_PORT.println(i);
             _gradient.emplace_back(std::array<uint8_t, 3>{uint8_t(gradR), uint8_t(gradG), uint8_t(gradB)});
         }
     }
 
+        LOG_PORT.println("RGBE::beginCurrentCombo gradient done");
     switch (_pattern)
     {
     case RGBEffectPattern::SMOOTH_ON_OFF:

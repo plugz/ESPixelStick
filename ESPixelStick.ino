@@ -45,7 +45,7 @@ const char passphrase[] = "abattoir2";
 #include <SPI.h>
 #include "ESPixelStick.h"
 #include "EFUpdate.h"
-#include "Fixture2.hpp"
+#include "RGBEffectWrapper.hpp"
 #include "wshandler.h"
 #include "pwm.h"
 #include "gamma.h"
@@ -129,7 +129,7 @@ Bounce bounce;
 // Output Drivers
 #if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
-Fixture2 fixture;
+RGBEffectWrapper rgbEffect;
 static bool needRefresh = false;
 #elif defined(ESPS_MODE_SERIAL)
 SerialDriver    serial;         // Serial object
@@ -614,14 +614,7 @@ void updateConfig() {
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
-    fixture.begin({Fixture2Mode::PLASMA, Fixture2Mode::SMOOTH_ON_OFF,
-                   Fixture2Mode::PING_PONG},
-                  {Fixture2Color::FLAME, Fixture2Color::GRASS,
-                   Fixture2Color::OCEAN, Fixture2Color::RAINBOW},
-                  pixels.getData(),
-                  LED_COUNT / 2, // width
-                  2, // height
-                  false); // zigzag
+    rgbEffect.begin(pixels.getData(), LED_COUNT);
 #elif defined(ESPS_MODE_SERIAL)
     serial.begin(&SEROUT_PORT, config.serial_type, config.channel_count, config.baudrate);
 #endif
@@ -912,25 +905,25 @@ void setStatic(uint8_t r, uint8_t g, uint8_t b) {
 void handleButtonLongPressBegin()
 {
     LOG_PORT.println("LONG PRESS BEGIN");
-    fixture.startFlash(Fixture2FlashMode::STROBE);
+    rgbEffect.startFlash();
 }
 
 void handleButtonLongPressEnd()
 {
     LOG_PORT.println("LONG PRESS END");
-    fixture.stopFlash();
+    rgbEffect.stopFlash();
 }
 
 void handleButtonClick()
 {
-    LOG_PORT.println("CLICK RELEASE");
-    fixture.nextColor();
+    LOG_PORT.println("DOUBLE CLICK RELEASE");
+    rgbEffect.nextMode();
 }
 
 void handleButtonDoubleClick()
 {
-    LOG_PORT.println("DOUBLE CLICK RELEASE");
-    fixture.nextMode();
+    LOG_PORT.println("CLICK RELEASE");
+    rgbEffect.nextColor();
 }
 
 void handleButton()
@@ -1138,7 +1131,7 @@ void loop() {
 
     handleButton();
 
-    if (fixture.refreshPixels())
+    if (rgbEffect.refreshPixels(millis()))
         needRefresh = true;
 /* Streaming refresh */
 #if defined(ESPS_MODE_PIXEL)

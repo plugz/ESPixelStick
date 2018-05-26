@@ -43,10 +43,10 @@ enum class RGBEffectMixingMode
     DIVIDE,
     SCREEN,
     OVERLAY,
-    DODGE, // BUG
-    BURN, // BUG
+    DODGE,
+    BURN,
     HARDLIGHT,
-    SOFTLIGHT, // BUG
+    SOFTLIGHT,
     GRAINEXTRACT,
     GRAINMERGE,
     DIFFERENCE,
@@ -57,9 +57,9 @@ class RGBEffect
   public:
     struct PosArray
     {
-        std::vector<int> array;
-        unsigned int width;
-        unsigned int height;
+        std::vector<int> array = {};
+        unsigned int width = 0;
+        unsigned int height = 0;
     };
     void begin(RGBEffectPattern pattern,
                RGBEffectColor color,
