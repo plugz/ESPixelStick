@@ -69,34 +69,20 @@ struct EffectComboDesc
 EffectComboDesc sEffects[] = {
     {
         {
-            {RGBEffectPattern::PLASMA, RGBEffectMixingMode::REPLACE, 8000}
+            {RGBEffectPattern::PLASMA, RGBEffectMixingMode::REPLACE, 4000}
         },
         {
-            {RGBEffectPattern::STROBE, RGBEffectMixingMode::ADD, 8000}
+            {RGBEffectPattern::STROBE, RGBEffectMixingMode::ADD, 120}
         }
     },
     {
         {
-            {RGBEffectPattern::ROTATION_SMOOTH, RGBEffectMixingMode::REPLACE, 8000}
+            {RGBEffectPattern::PING_PONG_SMOOTH_H, RGBEffectMixingMode::REPLACE, 28402},
+            {RGBEffectPattern::PING_PONG_SMOOTH_H, RGBEffectMixingMode::MAX, 23983},
+            {RGBEffectPattern::STRIPE_SMOOTH_H_LEFT_RIGHT, RGBEffectMixingMode::MAX, 3149}
         },
         {
-            {RGBEffectPattern::STRIPE_V_DOWN_UP, RGBEffectMixingMode::ADD, 400},
-        }
-    },
-    {
-        {
-            {RGBEffectPattern::ROTATION, RGBEffectMixingMode::REPLACE, 8000}
-        },
-        {
-            {RGBEffectPattern::STROBE, RGBEffectMixingMode::ADD, 600},
-        }
-    },
-    {
-        {
-            {RGBEffectPattern::PING_PONG_H, RGBEffectMixingMode::REPLACE, 6000}
-        },
-        {
-            {RGBEffectPattern::PING_PONG_H, RGBEffectMixingMode::ADD, 2400},
+            {RGBEffectPattern::SMOOTH_ON_OFF, RGBEffectMixingMode::MAX, 140},
         }
     },
 };
@@ -109,28 +95,24 @@ struct ColorComboDesc
 
 ColorComboDesc sColors[] = {
     {
-        {RGBEffectColor::FLAME},
-        {RGBEffectColor::GOLD}
+        {
+            RGBEffectColor::GRASS,
+            RGBEffectColor::GRASS,
+            RGBEffectColor::GOLD
+        },
+        {
+            RGBEffectColor::WHITE
+        }
     },
     {
-        {RGBEffectColor::OCEAN},
-        {RGBEffectColor::WHITE}
-    },
-    {
-        {RGBEffectColor::GRASS},
-        {RGBEffectColor::GOLD}
-    },
-    {
-        {RGBEffectColor::RAINBOW},
-        {RGBEffectColor::WHITE}
-    },
-    {
-        {RGBEffectColor::GOLD},
-        {RGBEffectColor::WHITE}
-    },
-    {
-        {RGBEffectColor::PINK},
-        {RGBEffectColor::WHITE}
+        {
+            RGBEffectColor::GOLD,
+            RGBEffectColor::GOLD,
+            RGBEffectColor::FLAME
+        },
+        {
+            RGBEffectColor::WHITE
+        }
     },
 };
 
@@ -154,8 +136,6 @@ void RGBEffectWrapper::stopFlash()
 
 void RGBEffectWrapper::nextMode()
 {
-    //_currentEffects.clear();
-    //_currentStrobeEffects.clear();
     _currentEffectsIdx = (_currentEffectsIdx + 1) % (sizeof(sEffects) / sizeof(*sEffects));
 
     begin();
@@ -164,8 +144,8 @@ void RGBEffectWrapper::nextMode()
 void RGBEffectWrapper::begin()
 {
     LOG_PORT.println("begin 2");
-    _currentEffects.clear();//(sEffects[_currentEffectsIdx].effects.size());
-    _currentStrobeEffects.clear();//resize(sEffects[_currentEffectsIdx].strobeEffects.size());
+    _currentEffects.clear();
+    _currentStrobeEffects.clear();
 
 
     LOG_PORT.println("start effects");
@@ -184,7 +164,7 @@ void RGBEffectWrapper::begin()
         LOG_PORT.print(_currentColorsIdx, DEC);
         LOG_PORT.println();
         _currentEffects.push_back({});
-        
+
         LOG_PORT.println("begincurrentEffect");
         _currentEffects[idx].begin(
                 effectDesc.pattern,
@@ -198,13 +178,13 @@ void RGBEffectWrapper::begin()
         _currentEffects[idx].setLoopTime(effectDesc.loopTime);
         ++idx;
     }
-    
+
     LOG_PORT.println("start strobe effects");
     idx = 0;
     for (auto& strobeEffectDesc : sEffects[_currentEffectsIdx].strobeEffects)
     {
         int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].strobeColors.size());
-        
+
         _currentStrobeEffects.push_back({});
         _currentStrobeEffects[idx].begin(
                 strobeEffectDesc.pattern,
