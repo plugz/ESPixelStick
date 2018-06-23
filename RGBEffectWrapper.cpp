@@ -78,7 +78,6 @@ EffectComboDesc sEffects[] = {
     {
         {
             {RGBEffectPattern::PING_PONG_SMOOTH_H, RGBEffectMixingMode::REPLACE, 28402},
-            {RGBEffectPattern::PING_PONG_SMOOTH_H, RGBEffectMixingMode::MAX, 23983},
             {RGBEffectPattern::STRIPE_SMOOTH_H_LEFT_RIGHT, RGBEffectMixingMode::MAX, 3149}
         },
         {
@@ -96,8 +95,7 @@ struct ColorComboDesc
 ColorComboDesc sColors[] = {
     {
         {
-            RGBEffectColor::GRASS,
-            RGBEffectColor::GRASS,
+            RGBEffectColor::FLAME,
             RGBEffectColor::GOLD
         },
         {
@@ -106,7 +104,6 @@ ColorComboDesc sColors[] = {
     },
     {
         {
-            RGBEffectColor::GOLD,
             RGBEffectColor::GOLD,
             RGBEffectColor::FLAME
         },
@@ -156,7 +153,7 @@ void RGBEffectWrapper::begin()
         LOG_PORT.print(idx, DEC);
         LOG_PORT.println();
         int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].colors.size());
-        
+
         LOG_PORT.print("colorIdx=");
         LOG_PORT.print(colorIdx, DEC);
         LOG_PORT.println();
