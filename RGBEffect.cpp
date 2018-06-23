@@ -16,6 +16,17 @@
 
 #define TARGET_FREQ_HZ 50
 
+template<typename T>
+static inline T loopedDistance(T const a, T const b, T const size)
+{
+    return std::min(
+                std::abs(a - b),
+                std::min(
+                    std::abs((a + size) - b),
+                    std::abs((a - size) - b))
+                );
+}
+
 void RGBEffect::begin(RGBEffectPattern pattern,
                       RGBEffectColor color,
                       RGBEffectMixingMode mixingMode,
@@ -205,6 +216,24 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
         case RGBEffectPattern::STRIPE_V_DOWN_UP:
             refreshPixelsStripeVDownUp();
             break;
+        case RGBEffectPattern::STRIPE_SMOOTH:
+            refreshPixelsStripeSmooth();
+            break;
+        case RGBEffectPattern::STRIPE_SMOOTH_H_LEFT_RIGHT:
+            refreshPixelsStripeSmoothHLeftRight();
+            break;
+        case RGBEffectPattern::STRIPE_SMOOTH_V_UP_DOWN:
+            refreshPixelsStripeSmoothVUpDown();
+            break;
+        case RGBEffectPattern::STRIPE_SMOOTH_REV:
+            refreshPixelsStripeSmoothRev();
+            break;
+        case RGBEffectPattern::STRIPE_SMOOTH_H_RIGHT_LEFT:
+            refreshPixelsStripeSmoothHRightLeft();
+            break;
+        case RGBEffectPattern::STRIPE_SMOOTH_V_DOWN_UP:
+            refreshPixelsStripeSmoothVDownUp();
+            break;
         case RGBEffectPattern::PING_PONG:
             refreshPixelsPingPong();
             break;
@@ -213,6 +242,15 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
             break;
         case RGBEffectPattern::PING_PONG_V:
             refreshPixelsPingPongV();
+            break;
+        case RGBEffectPattern::PING_PONG_SMOOTH:
+            refreshPixelsPingPongSmooth();
+            break;
+        case RGBEffectPattern::PING_PONG_SMOOTH_H:
+            refreshPixelsPingPongSmoothH();
+            break;
+        case RGBEffectPattern::PING_PONG_SMOOTH_V:
+            refreshPixelsPingPongSmoothV();
             break;
         case RGBEffectPattern::ROTATION:
             refreshPixelsRotation();
@@ -287,6 +325,24 @@ void RGBEffect::beginCurrentCombo()
     case RGBEffectPattern::STRIPE_V_DOWN_UP:
         beginStripeVDownUp();
         break;
+    case RGBEffectPattern::STRIPE_SMOOTH:
+        beginStripeSmooth();
+        break;
+    case RGBEffectPattern::STRIPE_SMOOTH_H_LEFT_RIGHT:
+        beginStripeSmoothHLeftRight();
+        break;
+    case RGBEffectPattern::STRIPE_SMOOTH_V_UP_DOWN:
+        beginStripeSmoothVUpDown();
+        break;
+    case RGBEffectPattern::STRIPE_SMOOTH_REV:
+        beginStripeSmoothRev();
+        break;
+    case RGBEffectPattern::STRIPE_SMOOTH_H_RIGHT_LEFT:
+        beginStripeSmoothHRightLeft();
+        break;
+    case RGBEffectPattern::STRIPE_SMOOTH_V_DOWN_UP:
+        beginStripeSmoothVDownUp();
+        break;
     case RGBEffectPattern::PING_PONG:
         beginPingPong();
         break;
@@ -295,6 +351,15 @@ void RGBEffect::beginCurrentCombo()
         break;
     case RGBEffectPattern::PING_PONG_V:
         beginPingPongV();
+        break;
+    case RGBEffectPattern::PING_PONG_SMOOTH:
+        beginPingPongSmooth();
+        break;
+    case RGBEffectPattern::PING_PONG_SMOOTH_H:
+        beginPingPongSmoothH();
+        break;
+    case RGBEffectPattern::PING_PONG_SMOOTH_V:
+        beginPingPongSmoothV();
         break;
     case RGBEffectPattern::ROTATION:
         beginRotation();
@@ -418,7 +483,8 @@ void RGBEffect::refreshPixelsStrobe()
     std::array<uint8_t, 3> rgb;
     if ((_prevUpdateMillis / (_loopTime / 2)) % 2)
     {
-        rgb = getGradientColor(double(_prevUpdateMillis % _loopTime) / double(_loopTime));
+        int const colorLoopTime = _loopTime * getColor().size() * 10;
+        rgb = getGradientColor(double(_prevUpdateMillis % colorLoopTime) / double(colorLoopTime));
     }
     else
     {
@@ -448,7 +514,7 @@ void RGBEffect::refreshPixelsStripe()
     std::array<uint8_t, 3> rgb;
     for (unsigned int i = 0; i < _pixelCount; ++i)
     {
-        int distance = std::abs(position - (int)i);
+        int distance = loopedDistance<int>(position, i, _pixelCount);
         if (distance < length)
         {
             rgb[0] = (red * (length - distance)) / length;
@@ -482,7 +548,7 @@ void RGBEffect::refreshPixelsStripeHLeftRight()
     for (unsigned int i = 0; i < _pixelCount; ++i)
     {
         int x = _posArray.array[i] % _posArray.width;
-        int distance = std::abs(position - (int)x);
+        int distance = loopedDistance<int>(position, x, _posArray.width);
         if (distance < length)
         {
             rgb[0] = (red * (length - distance)) / length;
@@ -516,7 +582,7 @@ void RGBEffect::refreshPixelsStripeVUpDown()
     for (unsigned int i = 0; i < _pixelCount; ++i)
     {
         int y = _posArray.array[i] / _posArray.width;
-        int distance = std::abs(position - (int)y);
+        int distance = loopedDistance<int>(position, y, _posArray.height);
         if (distance < length)
         {
             rgb[0] = (red * (length - distance)) / length;
@@ -632,6 +698,262 @@ void RGBEffect::refreshPixelsStripeVDownUp()
     }
 }
 
+void RGBEffect::beginStripeSmooth()
+{
+}
+
+void RGBEffect::refreshPixelsStripeSmooth()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = advance * _pixelCount;
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _pixelCount / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        double const distance = loopedDistance<double>(position, i, _pixelCount);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeSmoothHLeftRight()
+{
+}
+
+void RGBEffect::refreshPixelsStripeSmoothHLeftRight()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = advance * _posArray.width;
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _posArray.width / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int const x = _posArray.array[i] % _posArray.width;
+        double const distance = loopedDistance<double>(position, x, _posArray.width);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeSmoothVUpDown()
+{
+}
+
+void RGBEffect::refreshPixelsStripeSmoothVUpDown()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = advance * _posArray.height;
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _posArray.height / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int const y = _posArray.array[i] / _posArray.width;
+        double const distance = loopedDistance<double>(position, y, _posArray.height);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeSmoothRev()
+{
+}
+
+void RGBEffect::refreshPixelsStripeSmoothRev()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = 1.0 - (advance * _pixelCount);
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _pixelCount / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        double const distance = loopedDistance<double>(position, i, _pixelCount);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeSmoothHRightLeft()
+{
+}
+
+void RGBEffect::refreshPixelsStripeSmoothHRightLeft()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = 1.0 - (advance * _posArray.width);
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _posArray.width / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int const x = _posArray.array[i] % _posArray.width;
+        double const distance = loopedDistance<double>(position, x, _posArray.width);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeSmoothVDownUp()
+{
+}
+
+void RGBEffect::refreshPixelsStripeSmoothVDownUp()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = 1.0 - (advance * _posArray.height);
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _posArray.height / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int const y = _posArray.array[i] / _posArray.width;
+        double const distance = loopedDistance<double>(position, y, _posArray.height);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
 void RGBEffect::beginPingPong()
 {
 }
@@ -724,6 +1046,134 @@ void RGBEffect::refreshPixelsPingPongV()
             rgb[0] = (red * (length - distance)) / length;
             rgb[1] = (green * (length - distance)) / length;
             rgb[2] = (blue * (length - distance)) / length;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginPingPongSmooth()
+{
+}
+
+void RGBEffect::refreshPixelsPingPongSmooth()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = std::abs(advance * 2 - 1) * _pixelCount;
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _pixelCount / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        double const distance = std::abs(position - i);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginPingPongSmoothH()
+{
+}
+
+void RGBEffect::refreshPixelsPingPongSmoothH()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = std::abs(advance * 2 - 1) * _posArray.width;
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _posArray.width / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int const x = _posArray.array[i] % _posArray.width;
+        double const distance = std::abs(position - x);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginPingPongSmoothV()
+{
+}
+
+void RGBEffect::refreshPixelsPingPongSmoothV()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = double(_prevUpdateMillis % _loopTime) / double(_loopTime);
+    double const position = std::abs(advance * 2 - 1) * _posArray.height;
+    auto const color = getGradientColor(colorAdvance);
+    int const red = color[0];
+    int const green = color[1];
+    int const blue = color[2];
+
+    double const lengthMin = _posArray.height / 10.0;
+    double const lengthMax = lengthMin * 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int const y = _posArray.array[i] / _posArray.width;
+        double const distance = std::abs(position - y);
+        if (distance < lengthMin)
+        {
+            rgb[0] = red;
+            rgb[1] = green;
+            rgb[2] = blue;
+        }
+        else if (distance < lengthMax)
+        {
+            double const distance10 = (distance - lengthMin) / (lengthMax - lengthMin);
+            double const distance01 = 1 - distance10;
+            rgb[0] = red * distance01;
+            rgb[1] = green * distance01;
+            rgb[2] = blue * distance01;
         }
         else
         {

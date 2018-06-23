@@ -15,9 +15,18 @@ enum class RGBEffectPattern
     STRIPE_REV,
     STRIPE_H_RIGHT_LEFT,
     STRIPE_V_DOWN_UP,
+    STRIPE_SMOOTH,
+    STRIPE_SMOOTH_H_LEFT_RIGHT,
+    STRIPE_SMOOTH_V_UP_DOWN,
+    STRIPE_SMOOTH_REV,
+    STRIPE_SMOOTH_H_RIGHT_LEFT,
+    STRIPE_SMOOTH_V_DOWN_UP,
     PING_PONG,
     PING_PONG_H,
     PING_PONG_V,
+    PING_PONG_SMOOTH,
+    PING_PONG_SMOOTH_H,
+    PING_PONG_SMOOTH_V,
     ROTATION,
     ROTATION_SMOOTH,
     ROTATION_SMOOTH_THIN,
@@ -127,6 +136,30 @@ class RGBEffect
     void beginStripeVDownUp();
     void refreshPixelsStripeVDownUp();
 
+    // stripe smooth
+    void beginStripeSmooth();
+    void refreshPixelsStripeSmooth();
+
+    // stripe smooth
+    void beginStripeSmoothHLeftRight();
+    void refreshPixelsStripeSmoothHLeftRight();
+
+    // stripe smooth
+    void beginStripeSmoothVUpDown();
+    void refreshPixelsStripeSmoothVUpDown();
+
+    // stripe smooth
+    void beginStripeSmoothRev();
+    void refreshPixelsStripeSmoothRev();
+
+    // stripe smooth
+    void beginStripeSmoothHRightLeft();
+    void refreshPixelsStripeSmoothHRightLeft();
+
+    // stripe smooth
+    void beginStripeSmoothVDownUp();
+    void refreshPixelsStripeSmoothVDownUp();
+
     // ping pong (single pixel)
     void beginPingPong();
     void refreshPixelsPingPong();
@@ -138,6 +171,18 @@ class RGBEffect
     // ping pong (single pixel)
     void beginPingPongV();
     void refreshPixelsPingPongV();
+
+    // ping pong smooth
+    void beginPingPongSmooth();
+    void refreshPixelsPingPongSmooth();
+
+    // ping pong smooth
+    void beginPingPongSmoothH();
+    void refreshPixelsPingPongSmoothH();
+
+    // ping pong smooth
+    void beginPingPongSmoothV();
+    void refreshPixelsPingPongSmoothV();
 
     // rotation (2-branch)
     void beginRotation();
