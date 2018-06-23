@@ -51,7 +51,7 @@ static const RGBEffect::PosArray sPosArray =
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 39, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         }, 40, 18);
 */
-static const RGBEffect::PosArray sPosArray = RGBEffect::posArraySimple(10, 1);
+static const RGBEffect::PosArray sPosArray = RGBEffect::posArraySimple(LED_COUNT, 1);
 
 struct EffectDesc
 {
