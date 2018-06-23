@@ -10,8 +10,11 @@ enum class RGBEffectPattern
     SMOOTH_ON_OFF,
     STROBE,
     STRIPE,
-    STRIPE_H,
-    STRIPE_V,
+    STRIPE_H_LEFT_RIGHT,
+    STRIPE_V_UP_DOWN,
+    STRIPE_REV,
+    STRIPE_H_RIGHT_LEFT,
+    STRIPE_V_DOWN_UP,
     PING_PONG,
     PING_PONG_H,
     PING_PONG_V,
@@ -43,10 +46,10 @@ enum class RGBEffectMixingMode
     DIVIDE,
     SCREEN,
     OVERLAY,
-    DODGE,
-    BURN,
+    DODGE, // BUG
+    BURN, // BUG
     HARDLIGHT,
-    SOFTLIGHT,
+    SOFTLIGHT, // BUG
     GRAINEXTRACT,
     GRAINMERGE,
     DIFFERENCE,
@@ -57,9 +60,9 @@ class RGBEffect
   public:
     struct PosArray
     {
-        std::vector<int> array = {};
-        unsigned int width = 0;
-        unsigned int height = 0;
+        std::vector<int> array;
+        unsigned int width;
+        unsigned int height;
     };
     void begin(RGBEffectPattern pattern,
                RGBEffectColor color,
@@ -80,6 +83,7 @@ class RGBEffect
     bool refreshPixels(unsigned long currentMillis);
 
   private:
+    std::array<uint8_t, 3> getGradientColor(double advance);
     void beginCurrentCombo();
     std::vector<std::array<uint8_t, 3>> const& getColor() const;
     uint8_t* _pixels;
@@ -90,7 +94,6 @@ class RGBEffect
     RGBEffectColor _color;
     RGBEffectMixingMode _mixingMode;
     int _loopTime = 8000;
-    std::vector<std::array<uint8_t, 3>> _gradient;
 
     // smooth on-off
     void beginSmoothOnOff();
@@ -105,12 +108,24 @@ class RGBEffect
     void refreshPixelsStripe();
 
     // stripe
-    void beginStripeH();
-    void refreshPixelsStripeH();
+    void beginStripeHLeftRight();
+    void refreshPixelsStripeHLeftRight();
 
     // stripe
-    void beginStripeV();
-    void refreshPixelsStripeV();
+    void beginStripeVUpDown();
+    void refreshPixelsStripeVUpDown();
+
+    // stripe
+    void beginStripeRev();
+    void refreshPixelsStripeRev();
+
+    // stripe
+    void beginStripeHRightLeft();
+    void refreshPixelsStripeHRightLeft();
+
+    // stripe
+    void beginStripeVDownUp();
+    void refreshPixelsStripeVDownUp();
 
     // ping pong (single pixel)
     void beginPingPong();

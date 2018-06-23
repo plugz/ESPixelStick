@@ -80,7 +80,7 @@ EffectComboDesc sEffects[] = {
             {RGBEffectPattern::ROTATION_SMOOTH, RGBEffectMixingMode::REPLACE, 8000}
         },
         {
-            {RGBEffectPattern::STRIPE_V, RGBEffectMixingMode::ADD, 400},
+            {RGBEffectPattern::STRIPE_V_DOWN_UP, RGBEffectMixingMode::ADD, 400},
         }
     },
     {

@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <iterator>
 
-#include "ESPixelStick.h"
 #ifdef abs
 #undef abs
 #endif
@@ -24,8 +23,6 @@ void RGBEffect::begin(RGBEffectPattern pattern,
                       unsigned int pixelCount,
                       PosArray const& posArray)
 {
-  
-        LOG_PORT.println("RGBE::begin");
     _pattern = pattern;
     _color = color;
     setMixingMode(mixingMode);
@@ -193,11 +190,20 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
         case RGBEffectPattern::STRIPE:
             refreshPixelsStripe();
             break;
-        case RGBEffectPattern::STRIPE_H:
-            refreshPixelsStripeH();
+        case RGBEffectPattern::STRIPE_H_LEFT_RIGHT:
+            refreshPixelsStripeHLeftRight();
             break;
-        case RGBEffectPattern::STRIPE_V:
-            refreshPixelsStripeV();
+        case RGBEffectPattern::STRIPE_V_UP_DOWN:
+            refreshPixelsStripeVUpDown();
+            break;
+        case RGBEffectPattern::STRIPE_REV:
+            refreshPixelsStripeRev();
+            break;
+        case RGBEffectPattern::STRIPE_H_RIGHT_LEFT:
+            refreshPixelsStripeHRightLeft();
+            break;
+        case RGBEffectPattern::STRIPE_V_DOWN_UP:
+            refreshPixelsStripeVDownUp();
             break;
         case RGBEffectPattern::PING_PONG:
             refreshPixelsPingPong();
@@ -226,44 +232,35 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
     return false;
 }
 
+std::array<uint8_t, 3> RGBEffect::getGradientColor(double advance)
+{
+    auto const& colors = getColor();
+
+    unsigned int const sIdx = (unsigned int)(advance * colors.size()) % colors.size();
+    unsigned int const eIdx = (sIdx + 1) % colors.size();
+
+    int const sr = colors[sIdx][0];
+    int const sg = colors[sIdx][1];
+    int const sb = colors[sIdx][2];
+    int const er = colors[eIdx][0];
+    int const eg = colors[eIdx][1];
+    int const eb = colors[eIdx][2];
+
+    int const stepR = (er - sr);
+    int const stepG = (eg - sg);
+    int const stepB = (eb - sb);
+
+    double const innerAdvance = (advance * colors.size()) - (int)(advance * colors.size());
+
+    int gradR = sr + (stepR * innerAdvance);
+    int gradG = sg + (stepG * innerAdvance);
+    int gradB = sb + (stepB * innerAdvance);
+
+    return std::array<uint8_t, 3>{uint8_t(gradR), uint8_t(gradG), uint8_t(gradB)};
+}
+
 void RGBEffect::beginCurrentCombo()
 {
-  
-        LOG_PORT.println("RGBE::beginCurrentCombo");
-    auto& colors = getColor();
-
-    _gradient.clear();
-    for (unsigned int i = 0; i < colors.size(); ++i)
-    {
-        unsigned int j = i + 1;
-        if (j == colors.size())
-            j = 0;
-            
-        LOG_PORT.println("RGBE::emplace gradient 1");
-        _gradient.emplace_back(colors[i]);
-        int sr = colors[i][0];
-        int sg = colors[i][1];
-        int sb = colors[i][2];
-        int er = colors[j][0];
-        int eg = colors[j][1];
-        int eb = colors[j][2];
-
-        int stepR = (er - sr);
-        int stepG = (eg - sg);
-        int stepB = (eb - sb);
-
-        for (int s = 1; s < 15; ++s)
-        {
-            int gradR = sr + ((stepR * s) / 15);
-            int gradG = sg + ((stepG * s) / 15);
-            int gradB = sb + ((stepB * s) / 15);
-            
-        LOG_PORT.println(i);
-            _gradient.emplace_back(std::array<uint8_t, 3>{uint8_t(gradR), uint8_t(gradG), uint8_t(gradB)});
-        }
-    }
-
-        LOG_PORT.println("RGBE::beginCurrentCombo gradient done");
     switch (_pattern)
     {
     case RGBEffectPattern::SMOOTH_ON_OFF:
@@ -275,11 +272,20 @@ void RGBEffect::beginCurrentCombo()
     case RGBEffectPattern::STRIPE:
         beginStripe();
         break;
-    case RGBEffectPattern::STRIPE_H:
-        beginStripeH();
+    case RGBEffectPattern::STRIPE_H_LEFT_RIGHT:
+        beginStripeHLeftRight();
         break;
-    case RGBEffectPattern::STRIPE_V:
-        beginStripeV();
+    case RGBEffectPattern::STRIPE_V_UP_DOWN:
+        beginStripeVUpDown();
+        break;
+    case RGBEffectPattern::STRIPE_REV:
+        beginStripeRev();
+        break;
+    case RGBEffectPattern::STRIPE_H_RIGHT_LEFT:
+        beginStripeHRightLeft();
+        break;
+    case RGBEffectPattern::STRIPE_V_DOWN_UP:
+        beginStripeVDownUp();
         break;
     case RGBEffectPattern::PING_PONG:
         beginPingPong();
@@ -409,8 +415,15 @@ void RGBEffect::beginStrobe()
 
 void RGBEffect::refreshPixelsStrobe()
 {
-    int value = ((_prevUpdateMillis / 80) % 2) ? 0xff : 0;
-    std::array<uint8_t, 3> rgb{uint8_t(value), uint8_t(value), uint8_t(value)};
+    std::array<uint8_t, 3> rgb;
+    if ((_prevUpdateMillis / (_loopTime / 2)) % 2)
+    {
+        rgb = getGradientColor(double(_prevUpdateMillis % _loopTime) / double(_loopTime));
+    }
+    else
+    {
+        rgb = std::array<uint8_t, 3>{0x00, 0x00, 0x00};
+    }
     for (unsigned int i = 0; i < _pixelCount; ++i)
     {
         mixPixel(_pixels + i * 3, rgb.data());
@@ -450,11 +463,11 @@ void RGBEffect::refreshPixelsStripe()
     }
 }
 
-void RGBEffect::beginStripeH()
+void RGBEffect::beginStripeHLeftRight()
 {
 }
 
-void RGBEffect::refreshPixelsStripeH()
+void RGBEffect::refreshPixelsStripeHLeftRight()
 {
     int colorAdvance = _prevUpdateMillis % _loopTime;
 
@@ -484,11 +497,11 @@ void RGBEffect::refreshPixelsStripeH()
     }
 }
 
-void RGBEffect::beginStripeV()
+void RGBEffect::beginStripeVUpDown()
 {
 }
 
-void RGBEffect::refreshPixelsStripeV()
+void RGBEffect::refreshPixelsStripeVUpDown()
 {
     int colorAdvance = _prevUpdateMillis % _loopTime;
 
@@ -498,6 +511,107 @@ void RGBEffect::refreshPixelsStripeV()
     int green = colors[colorIdx][1];
     int blue = colors[colorIdx][2];
     int position = (_posArray.height * colorAdvance) / _loopTime;
+    int length = 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int y = _posArray.array[i] / _posArray.width;
+        int distance = std::abs(position - (int)y);
+        if (distance < length)
+        {
+            rgb[0] = (red * (length - distance)) / length;
+            rgb[1] = (green * (length - distance)) / length;
+            rgb[2] = (blue * (length - distance)) / length;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeRev()
+{
+}
+
+void RGBEffect::refreshPixelsStripeRev()
+{
+    int colorAdvance = _prevUpdateMillis % _loopTime;
+
+    auto& colors = getColor();
+    int colorIdx = (_prevUpdateMillis / _loopTime) % colors.size();
+    int red = colors[colorIdx][0];
+    int green = colors[colorIdx][1];
+    int blue = colors[colorIdx][2];
+    int position = (_pixelCount - 1) - ((_pixelCount * colorAdvance) / _loopTime);
+    int length = 4;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int distance = std::abs(position - (int)i);
+        if (distance < length)
+        {
+            rgb[0] = (red * (length - distance)) / length;
+            rgb[1] = (green * (length - distance)) / length;
+            rgb[2] = (blue * (length - distance)) / length;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeHRightLeft()
+{
+}
+
+void RGBEffect::refreshPixelsStripeHRightLeft()
+{
+    int colorAdvance = _prevUpdateMillis % _loopTime;
+
+    auto& colors = getColor();
+    int colorIdx = (_prevUpdateMillis / _loopTime) % colors.size();
+    int red = colors[colorIdx][0];
+    int green = colors[colorIdx][1];
+    int blue = colors[colorIdx][2];
+    int position = (_posArray.width - 1) - ((_posArray.width * colorAdvance) / _loopTime);
+    int length = 2;
+    std::array<uint8_t, 3> rgb;
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        int x = _posArray.array[i] % _posArray.width;
+        int distance = std::abs(position - (int)x);
+        if (distance < length)
+        {
+            rgb[0] = (red * (length - distance)) / length;
+            rgb[1] = (green * (length - distance)) / length;
+            rgb[2] = (blue * (length - distance)) / length;
+        }
+        else
+        {
+            std::fill(std::begin(rgb), std::end(rgb), 0);
+        }
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginStripeVDownUp()
+{
+}
+
+void RGBEffect::refreshPixelsStripeVDownUp()
+{
+    int colorAdvance = _prevUpdateMillis % _loopTime;
+
+    auto& colors = getColor();
+    int colorIdx = (_prevUpdateMillis / _loopTime) % colors.size();
+    int red = colors[colorIdx][0];
+    int green = colors[colorIdx][1];
+    int blue = colors[colorIdx][2];
+    int position = (_posArray.height - 1) - ((_posArray.height * colorAdvance) / _loopTime);
     int length = 2;
     std::array<uint8_t, 3> rgb;
     for (unsigned int i = 0; i < _pixelCount; ++i)
@@ -668,12 +782,15 @@ void RGBEffect::beginRotationSmooth()
 
 void RGBEffect::refreshPixelsRotationSmooth()
 {
-    auto& colors = getColor();
-    int colorAdvance = _prevUpdateMillis % (_loopTime * colors.size());
-    int colorIdx = (colorAdvance * _gradient.size()) / (_loopTime * colors.size());
-    int red = _gradient[colorIdx][0];
-    int green = _gradient[colorIdx][1];
-    int blue = _gradient[colorIdx][2];
+    auto const& colors = getColor();
+    auto const color = getGradientColor(
+                double(_prevUpdateMillis % (_loopTime * colors.size()))
+                /
+                double(_loopTime * colors.size())
+                );
+    int red = color[0];
+    int green = color[1];
+    int blue = color[2];
 
     //3.14159
     //6.28319
@@ -708,12 +825,15 @@ void RGBEffect::beginRotationSmoothThin()
 
 void RGBEffect::refreshPixelsRotationSmoothThin()
 {
-    auto& colors = getColor();
-    int colorAdvance = _prevUpdateMillis % (_loopTime * colors.size());
-    int colorIdx = (colorAdvance * _gradient.size()) / (_loopTime * colors.size());
-    int red = _gradient[colorIdx][0];
-    int green = _gradient[colorIdx][1];
-    int blue = _gradient[colorIdx][2];
+    auto const& colors = getColor();
+    auto const color = getGradientColor(
+                double(_prevUpdateMillis % (_loopTime * colors.size()))
+                /
+                double(_loopTime * colors.size())
+                );
+    int red = color[0];
+    int green = color[1];
+    int blue = color[2];
 
     //3.14159
     //6.28319
@@ -763,8 +883,8 @@ void RGBEffect::refreshPixelsPlasma()
         double nx = double(x) / square;
         double ny = double(y) / square;
         double n = Perlin::noise(size * nx, size * ny, double(plasmaStepCount) / 1000.0);
-        int gradStep = ((n + 1) / 2) * _gradient.size();
-        mixPixel(_pixels + i * 3, _gradient[gradStep].data());
+        double n01 = (n + 1) / 2;
+        mixPixel(_pixels + i * 3, getGradientColor(n01).data());
     }
 }
 
