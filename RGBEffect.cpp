@@ -2,6 +2,7 @@
 #include "Perlin.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 
 #ifdef abs
@@ -195,6 +196,9 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
         case RGBEffectPattern::SMOOTH_ON_OFF:
             refreshPixelsSmoothOnOff();
             break;
+        case RGBEffectPattern::SMOOTHER_ON_OFF:
+            refreshPixelsSmootherOnOff();
+            break;
         case RGBEffectPattern::STROBE:
             refreshPixelsStrobe();
             break;
@@ -303,6 +307,9 @@ void RGBEffect::beginCurrentCombo()
     {
     case RGBEffectPattern::SMOOTH_ON_OFF:
         beginSmoothOnOff();
+        break;
+    case RGBEffectPattern::SMOOTHER_ON_OFF:
+        beginSmootherOnOff();
         break;
     case RGBEffectPattern::STROBE:
         beginStrobe();
@@ -467,6 +474,29 @@ void RGBEffect::refreshPixelsSmoothOnOff()
     red = (red * ((_loopTime / 2) - std::abs((_loopTime / 2) - colorAdvance))) / (_loopTime / 2);
     green = (green * ((_loopTime / 2) - std::abs((_loopTime / 2) - colorAdvance))) / (_loopTime / 2);
     blue = (blue * ((_loopTime / 2) - std::abs((_loopTime / 2) - colorAdvance))) / (_loopTime / 2);
+    std::array<uint8_t, 3> rgb{uint8_t(red), uint8_t(green), uint8_t(blue)};
+    for (unsigned int i = 0; i < _pixelCount; ++i)
+    {
+        mixPixel(_pixels + i * 3, rgb.data());
+    }
+}
+
+void RGBEffect::beginSmootherOnOff()
+{
+}
+
+void RGBEffect::refreshPixelsSmootherOnOff()
+{
+    double const colorAdvance =  double(_prevUpdateMillis % (_loopTime * getColor().size())) / double(_loopTime * getColor().size());
+    double const advance = (1.0 + std::sin(double(_prevUpdateMillis * M_PI * 2.0) / double(_loopTime))) / 2.0;
+
+    auto const color = getGradientColor(colorAdvance);
+    int red = color[0];
+    int green = color[1];
+    int blue = color[2];
+    red = red * advance;
+    green = green * advance;
+    blue = blue * advance;
     std::array<uint8_t, 3> rgb{uint8_t(red), uint8_t(green), uint8_t(blue)};
     for (unsigned int i = 0; i < _pixelCount; ++i)
     {

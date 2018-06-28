@@ -8,6 +8,7 @@
 enum class RGBEffectPattern
 {
     SMOOTH_ON_OFF,
+    SMOOTHER_ON_OFF,
     STROBE,
     STRIPE,
     STRIPE_H_LEFT_RIGHT,
@@ -107,6 +108,10 @@ class RGBEffect
     // smooth on-off
     void beginSmoothOnOff();
     void refreshPixelsSmoothOnOff();
+
+    // smoother on-off
+    void beginSmootherOnOff();
+    void refreshPixelsSmootherOnOff();
 
     // strobe
     void beginStrobe();
