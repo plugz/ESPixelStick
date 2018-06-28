@@ -51,7 +51,22 @@ static const RGBEffect::PosArray sPosArray =
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 39, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         }, 40, 18);
 */
-static const RGBEffect::PosArray sPosArray = RGBEffect::posArraySimple(LED_COUNT, 1);
+static const RGBEffect::PosArray sPosArray =
+    RGBEffect::posArrayFromLedArray({ // Jupe
+        -1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 39, -1, 38, -1, -1,
+        -1, -1, -1, -1, -1, -1,  2, -1,  3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, -1, 37,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  4, -1, -1, -1, -1, -1, -1, -1, -1, -1,  9, -1, 11, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 36,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  6, -1,  7, -1,  8, -1, -1, -1, 12, -1,
+        23, -1, 22, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 35, -1,
+        -1, -1, -1, -1, 21, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, -1, -1, -1,
+        24, -1, -1, -1, -1, -1, 20, -1, 19, -1, 18, -1, 17, -1, 16, -1, 15, -1, 14, -1, 34, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, 25, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 33, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, 26, -1, 27, -1, 28, -1, 29, -1, 30, -1, 31, -1, 32, -1, -1, -1, -1, -1, -1, -1,
+        }, 24, 12);
+//static const RGBEffect::PosArray sPosArray = RGBEffect::posArraySimple(LED_COUNT, 1);
 
 struct EffectDesc
 {
@@ -72,16 +87,34 @@ EffectComboDesc sEffects[] = {
             {RGBEffectPattern::PLASMA, RGBEffectMixingMode::REPLACE, 4000}
         },
         {
-            {RGBEffectPattern::STROBE, RGBEffectMixingMode::ADD, 120}
+            {RGBEffectPattern::SMOOTHER_ON_OFF, RGBEffectMixingMode::ADD, 160}
         }
     },
     {
         {
-            {RGBEffectPattern::PING_PONG_SMOOTH_H, RGBEffectMixingMode::REPLACE, 28402},
-            {RGBEffectPattern::STRIPE_SMOOTH_H_LEFT_RIGHT, RGBEffectMixingMode::MAX, 3149}
+            {RGBEffectPattern::PLASMA, RGBEffectMixingMode::REPLACE, 4000},
+            {RGBEffectPattern::STRIPE_SMOOTH_H_LEFT_RIGHT, RGBEffectMixingMode::SUB, 2500}
         },
         {
-            {RGBEffectPattern::SMOOTH_ON_OFF, RGBEffectMixingMode::MAX, 140},
+            {RGBEffectPattern::SMOOTHER_ON_OFF, RGBEffectMixingMode::MAX, 160},
+        }
+    },
+    {
+        {
+            {RGBEffectPattern::STRIPE_SMOOTH_V_DOWN_UP, RGBEffectMixingMode::REPLACE, 1700},
+            {RGBEffectPattern::ROTATION_SMOOTH_THIN, RGBEffectMixingMode::SOFTLIGHT, 833}
+        },
+        {
+            {RGBEffectPattern::STROBE, RGBEffectMixingMode::MAX, 120},
+        }
+    },
+    {
+        {
+            {RGBEffectPattern::STRIPE_SMOOTH_H_RIGHT_LEFT, RGBEffectMixingMode::REPLACE, 1500},
+            {RGBEffectPattern::PING_PONG_SMOOTH_H, RGBEffectMixingMode::MAX, 3000}
+        },
+        {
+            {RGBEffectPattern::STROBE, RGBEffectMixingMode::MAX, 120},
         }
     },
 };
@@ -95,8 +128,44 @@ struct ColorComboDesc
 ColorComboDesc sColors[] = {
     {
         {
+            RGBEffectColor::OCEAN,
+            RGBEffectColor::WHITE
+        },
+        {
+            RGBEffectColor::WHITE
+        }
+    },
+    {
+        {
             RGBEffectColor::FLAME,
-            RGBEffectColor::GOLD
+            RGBEffectColor::WHITE
+        },
+        {
+            RGBEffectColor::WHITE
+        }
+    },
+    {
+        {
+            RGBEffectColor::GRASS,
+            RGBEffectColor::WHITE
+        },
+        {
+            RGBEffectColor::WHITE
+        }
+    },
+    {
+        {
+            RGBEffectColor::RAINBOW,
+            RGBEffectColor::WHITE
+        },
+        {
+            RGBEffectColor::WHITE
+        }
+    },
+    {
+        {
+            RGBEffectColor::PINK,
+            RGBEffectColor::WHITE
         },
         {
             RGBEffectColor::WHITE
@@ -105,7 +174,7 @@ ColorComboDesc sColors[] = {
     {
         {
             RGBEffectColor::GOLD,
-            RGBEffectColor::FLAME
+            RGBEffectColor::WHITE
         },
         {
             RGBEffectColor::WHITE

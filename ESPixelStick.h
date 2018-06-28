@@ -31,7 +31,7 @@ const char BUILD_DATE[] = __DATE__;
 #define ESPS_MODE_PIXEL
 //#define ESPS_MODE_SERIAL
 
-#define LED_COUNT 80
+#define LED_COUNT 40
 
 /* Include support for PWM */
 //#define ESPS_SUPPORT_PWM
