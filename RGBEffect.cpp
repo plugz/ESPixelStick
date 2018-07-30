@@ -163,7 +163,7 @@ void RGBEffect::setMixingMode(RGBEffectMixingMode mixingMode)
         mixPixel = mixPixelGrainExtract;
         break;
     case RGBEffectMixingMode::GRAINMERGE:
-        mixPixel = mixPixel;
+        mixPixel = mixPixelGrainMerge;
         break;
     case RGBEffectMixingMode::DIFFERENCE:
         mixPixel = mixPixelDifference;
