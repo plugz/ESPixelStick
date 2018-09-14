@@ -148,14 +148,227 @@ void updateConfig();
 
 // Radio config
 RF_PRE_INIT() {
-    //wifi_set_phy_mode(PHY_MODE_11G);    // Force 802.11g mode
+    wifi_set_phy_mode(PHY_MODE_11G);    // Force 802.11g mode
     system_phy_set_powerup_option(31);  // Do full RF calibration on power-up
     system_phy_set_max_tpw(82);         // Set max TX power
 }
 
+/// WIFI SNIFF {
+
+#define TYPE_MANAGEMENT       0x00
+#define TYPE_CONTROL          0x01
+#define TYPE_DATA             0x02
+#define SUBTYPE_PROBE_REQUEST 0x04
+
+struct RxControl {
+    signed rssi:8; // signal intensity of packet
+    unsigned rate:4;
+    unsigned is_group:1;
+    unsigned:1;
+    unsigned sig_mode:2; // 0:is 11n packet; 1:is not 11n packet;
+    unsigned legacy_length:12; // if not 11n packet, shows length of packet.
+    unsigned damatch0:1;
+    unsigned damatch1:1;
+    unsigned bssidmatch0:1;
+    unsigned bssidmatch1:1;
+    unsigned MCS:7; // if is 11n packet, shows the modulation and code used (range from 0 to 76)
+    unsigned CWB:1; // if is 11n packet, shows if is HT40 packet or not
+    unsigned HT_length:16;// if is 11n packet, shows length of packet.
+    unsigned Smoothing:1;
+    unsigned Not_Sounding:1;
+    unsigned:1;
+    unsigned Aggregation:1;
+    unsigned STBC:2;
+    unsigned FEC_CODING:1; // if is 11n packet, shows if is LDPC packet or not.
+    unsigned SGI:1;
+    unsigned rxend_state:8;
+    unsigned ampdu_cnt:8;
+    unsigned channel:4; //which channel this packet in.
+    unsigned:12;
+};
+
+struct SnifferPacket2 {
+    RxControl rx_ctrl;
+    uint8_t data[112];
+    uint16_t cnt;
+    uint16_t len;
+};
+
+struct LenSeq {
+  u16 len; // length of packet
+  u16 seq; // serial number of packet, the high 12bits are serial number,
+           // low 14 bits are Fragment number(usually be 0)
+  u8 addr3[6]; // the third address in packet
+};
+struct SnifferPacket {
+  RxControl rx_ctrl;
+  u8 buf[36]; // head of ieee80211 packet
+  u16 cnt; // number count of packet
+  struct LenSeq lenseq[1]; // length of packet
+};
+
+static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
+    for(uint16_t i = start; i < 112 && i < start+size; i++) {
+        Serial.write(data[i]);
+    }
+}
+
+static void printDataSpanInt(uint16_t start, uint16_t size, uint8_t* data) {
+    for(uint16_t i = start; i < 112 && i < start+size; i++) {
+        LOG_PORT.print((int)data[i], DEC);
+        LOG_PORT.print(", ");
+    }
+}
+
+static void getMAC(char *addr, uint8_t* data, uint16_t offset) {
+    sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[offset + 0],
+            data[offset + 1], data[offset + 2], data[offset + 3],
+            data[offset + 4], data[offset + 5]);
+}
+
+static void showData(void* snifferPacket_void, uint16_t len) {
+    SnifferPacket2* snifferPacket = reinterpret_cast<SnifferPacket2*>(snifferPacket_void);
+
+    unsigned int frameControl = ((unsigned int)snifferPacket->data[1] << 8) + snifferPacket->data[0];
+
+    uint8_t version      = (frameControl & 0b0000000000000011) >> 0;
+    uint8_t frameType    = (frameControl & 0b0000000000001100) >> 2;
+    uint8_t frameSubType = (frameControl & 0b0000000011110000) >> 4;
+    uint8_t toDS         = (frameControl & 0b0000000100000000) >> 8;
+    uint8_t fromDS       = (frameControl & 0b0000001000000000) >> 9;
+
+    // Only look for probe request packets
+    if (frameType != TYPE_DATA)
+    {
+        return;
+    }
+
+    if (len < 400)
+        return;
+
+    LOG_PORT.print("Data:");
+    printDataSpan(0, len, snifferPacket->data);
+    LOG_PORT.println("");
+    LOG_PORT.print("Data(int):");
+    printDataSpanInt(0, len, snifferPacket->data);
+    LOG_PORT.println("");
+}
+
+static void showMetadata(void* snifferPacket_void) {
+    SnifferPacket2* snifferPacket = reinterpret_cast<SnifferPacket2*>(snifferPacket_void);
+
+    unsigned int frameControl = ((unsigned int)snifferPacket->data[1] << 8) + snifferPacket->data[0];
+
+    uint8_t version      = (frameControl & 0b0000000000000011) >> 0;
+    uint8_t frameType    = (frameControl & 0b0000000000001100) >> 2;
+    uint8_t frameSubType = (frameControl & 0b0000000011110000) >> 4;
+    uint8_t toDS         = (frameControl & 0b0000000100000000) >> 8;
+    uint8_t fromDS       = (frameControl & 0b0000001000000000) >> 9;
+
+    // Only look for probe request packets
+    if (frameType != TYPE_MANAGEMENT
+            || frameSubType != SUBTYPE_PROBE_REQUEST)
+    {
+        return;
+    }
+
+    LOG_PORT.print("RSSI: ");
+    LOG_PORT.print(snifferPacket->rx_ctrl.rssi, DEC);
+
+    LOG_PORT.print(" Ch: ");
+    LOG_PORT.print(wifi_get_channel());
+
+    char addr[] = "00:00:00:00:00:00";
+    getMAC(addr, snifferPacket->data, 10);
+    LOG_PORT.print(" Peer MAC: ");
+    LOG_PORT.print(addr);
+
+    uint8_t SSID_length = snifferPacket->data[25];
+    LOG_PORT.print(" SSID: ");
+    printDataSpan(26, SSID_length, snifferPacket->data);
+
+    LOG_PORT.println();
+}
+
+static void PrintSnifferPacket(void* buffer, uint16_t len) {
+    SnifferPacket* snifferPacket = reinterpret_cast<SnifferPacket*>(buffer);
+    if (len == 50 + snifferPacket->cnt * 10)
+        LOG_PORT.print("len == 50 + snifferPacker->cnt * 10");
+    else if (snifferPacket->cnt == 0)
+    {
+        LOG_PORT.print("cnt == 0, invalid packet");
+        return;
+    }
+    else
+    {
+        LOG_PORT.print("FUCK len != 50 + snifferPacker->cnt * 10");
+        return;
+    }
+
+    int size = snifferPacket->lenseq[0].len;
+    LOG_PORT.print("  ;  size=");
+    LOG_PORT.print(size, DEC);
+    LOG_PORT.print("  ;  seq=");
+    LOG_PORT.print(snifferPacket->lenseq[0].seq, HEX);
+    if (size > 36)
+        size = 36;
+    LOG_PORT.print("  ;  data=");
+    printDataSpan(0, size, snifferPacket->buf);
+    LOG_PORT.print("  ;  data(int)=");
+    printDataSpanInt(0, size, snifferPacket->buf);
+    LOG_PORT.println();
+}
+
+/**
+ * Callback for promiscuous mode
+ */
+static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t len) {
+    //LOG_PORT.print(len, DEC);
+    if (len == 128)
+    {
+        //LOG_PORT.print("len%10 == 0, use SnifferPacket2");
+    }
+    else if (len % 10 == 0)
+    {
+        PrintSnifferPacket(buffer, len);
+        //LOG_PORT.print("len%10 == 0, use SnifferPacket");
+    }
+    else if (len == 12)
+    {
+        //LOG_PORT.print("len==12, discard that shit");
+    }
+    else
+    {
+        //LOG_PORT.print("WHAT");
+    }
+
+    //LOG_PORT.println("");
+
+    //SnifferPacket2 *snifferPacket = (SnifferPacket*) buffer;
+    //showMetadata(snifferPacket);
+    //showData(buffer, length);
+}
+
+/**
+ * Callback for channel hoping
+ */
+//void channelHop()
+//{
+//    // hoping channels 1-14
+//    uint8 new_channel = wifi_get_channel() + 1;
+//    if (new_channel > 14)
+//        new_channel = 1;
+//    wifi_set_channel(new_channel);
+//}
+
+#define DISABLE 0
+#define ENABLE  1
+
+/// } WIFI SNIFF
+
 void setup() {
     // Configure SDK params
-    wifi_set_sleep_type(NONE_SLEEP_T);
+    //wifi_set_sleep_type(NONE_SLEEP_T);
 
     // Initial pin states
     pinMode(DATA_PIN, OUTPUT);
@@ -168,6 +381,22 @@ void setup() {
     // Setup serial log port
     LOG_PORT.begin(115200);
     delay(10);
+
+
+    /// WIFI SNIFF {
+    wifi_set_opmode(STATION_MODE);
+    wifi_set_channel(11);
+    wifi_promiscuous_enable(DISABLE);
+    delay(10);
+    wifi_set_promiscuous_rx_cb(sniffer_callback);
+    delay(10);
+    wifi_promiscuous_enable(ENABLE);
+
+    // setup the channel hoping callback timer
+    //os_timer_disarm(&channelHop_timer);
+    //os_timer_setfn(&channelHop_timer, (os_timer_func_t *) channelHop, NULL);
+    //os_timer_arm(&channelHop_timer, CHANNEL_HOP_INTERVAL_MS, 1);
+    /// } WIFI SNIFF
 
 #if defined(DEBUG)
     ets_install_putc1((void *) &_u0_putc);
@@ -191,22 +420,22 @@ void setup() {
     WiFi.hostname(config.hostname);
 
     // Setup WiFi Handlers
-    wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
+    //wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
 
     // Setup MQTT Handlers
-    if (config.mqtt) {
-        mqtt.onConnect(onMqttConnect);
-        mqtt.onDisconnect(onMqttDisconnect);
-        mqtt.onMessage(onMqttMessage);
-        mqtt.setServer(config.mqtt_ip.c_str(), config.mqtt_port);
-        if (config.mqtt_user.length() > 0)
-            mqtt.setCredentials(config.mqtt_user.c_str(), config.mqtt_password.c_str());
-    }
+    //if (config.mqtt) {
+    //    mqtt.onConnect(onMqttConnect);
+    //    mqtt.onDisconnect(onMqttDisconnect);
+    //    mqtt.onMessage(onMqttMessage);
+    //    mqtt.setServer(config.mqtt_ip.c_str(), config.mqtt_port);
+    //    if (config.mqtt_user.length() > 0)
+    //        mqtt.setCredentials(config.mqtt_user.c_str(), config.mqtt_password.c_str());
+    //}
 
 
     // Configure the outputs
 #if defined (ESPS_SUPPORT_PWM)
-    setupPWM();
+    //setupPWM();
 #endif
 
 #if defined (ESPS_MODE_PIXEL)
@@ -357,10 +586,10 @@ void onMqttMessage(char* topic, char* p_payload,
     for (uint8_t i = 0; i < len; i++)
         payload.concat((char)p_payload[i]);
 /*
-Serial.print("Topic: ");
-Serial.print(topic);
-Serial.print(" | Payload: ");
-Serial.println(payload);
+LOG_PORT.print("Topic: ");
+LOG_PORT.print(topic);
+LOG_PORT.print(" | Payload: ");
+LOG_PORT.println(payload);
 */
     // Handle message topic
     if (String(config.mqtt_topic + MQTT_LIGHT_COMMAND_TOPIC).equals(topic)) {
