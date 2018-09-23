@@ -375,7 +375,7 @@ void setup() {
 
     /// WIFI SNIFF {
     wifi_set_opmode(STATION_MODE);
-    wifi_set_channel(11);
+    wifi_set_channel(1);
     wifi_promiscuous_enable(DISABLE);
     delay(10);
     wifi_set_promiscuous_rx_cb(sniffer_callback);
