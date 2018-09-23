@@ -208,16 +208,19 @@ struct SnifferPacket {
 };
 
 static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
-    for(uint16_t i = start; i < 112 && i < start+size; i++) {
+    for(uint16_t i = start; i < start+size; i++) {
         Serial.write(data[i]);
     }
 }
 
 static void printDataSpanInt(uint16_t start, uint16_t size, uint8_t* data) {
-    for(uint16_t i = start; i < 112 && i < start+size; i++) {
+    // Too slow, will fire watchdog
+    /*
+    for(uint16_t i = start; i < start+size; i++) {
         LOG_PORT.print((int)data[i], DEC);
         LOG_PORT.print(", ");
     }
+    */
 }
 
 static void getMAC(char *addr, uint8_t* data, uint16_t offset) {
@@ -227,30 +230,16 @@ static void getMAC(char *addr, uint8_t* data, uint16_t offset) {
 }
 
 static void showData(void* snifferPacket_void, uint16_t len) {
-    SnifferPacket2* snifferPacket = reinterpret_cast<SnifferPacket2*>(snifferPacket_void);
-
-    unsigned int frameControl = ((unsigned int)snifferPacket->data[1] << 8) + snifferPacket->data[0];
-
-    uint8_t version      = (frameControl & 0b0000000000000011) >> 0;
-    uint8_t frameType    = (frameControl & 0b0000000000001100) >> 2;
-    uint8_t frameSubType = (frameControl & 0b0000000011110000) >> 4;
-    uint8_t toDS         = (frameControl & 0b0000000100000000) >> 8;
-    uint8_t fromDS       = (frameControl & 0b0000001000000000) >> 9;
-
-    // Only look for probe request packets
-    if (frameType != TYPE_DATA)
-    {
-        return;
-    }
-
-    if (len < 400)
-        return;
-
+    LOG_PORT.print(" len= ");
+    LOG_PORT.print(len, DEC);
+    LOG_PORT.print(" packet.len= ");
+    LOG_PORT.print(((SnifferPacket2*)snifferPacket_void)->len, DEC);
+    LOG_PORT.print(" packet.cnt= ");
+    LOG_PORT.print(((SnifferPacket2*)snifferPacket_void)->cnt, DEC);
     LOG_PORT.print("Data:");
-    printDataSpan(0, len, snifferPacket->data);
-    LOG_PORT.println("");
+    printDataSpan(0, len, (uint8_t*)snifferPacket_void);
     LOG_PORT.print("Data(int):");
-    printDataSpanInt(0, len, snifferPacket->data);
+    printDataSpanInt(0, len, (uint8_t*)snifferPacket_void);
     LOG_PORT.println("");
 }
 
@@ -269,6 +258,7 @@ static void showMetadata(void* snifferPacket_void) {
     if (frameType != TYPE_MANAGEMENT
             || frameSubType != SUBTYPE_PROBE_REQUEST)
     {
+        LOG_PORT.println("strange frametype");
         return;
     }
 
@@ -287,7 +277,7 @@ static void showMetadata(void* snifferPacket_void) {
     LOG_PORT.print(" SSID: ");
     printDataSpan(26, SSID_length, snifferPacket->data);
 
-    LOG_PORT.println();
+    LOG_PORT.println("");
 }
 
 static void PrintSnifferPacket(void* buffer, uint16_t len) {
@@ -326,27 +316,27 @@ static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t len) {
     //LOG_PORT.print(len, DEC);
     if (len == 128)
     {
-        //LOG_PORT.print("len%10 == 0, use SnifferPacket2");
+        LOG_PORT.print("len == 128, use SnifferPacket2");
+        SnifferPacket2 *snifferPacket = (SnifferPacket2*) buffer;
+        showMetadata(snifferPacket);
+        showData(buffer, len);
     }
     else if (len % 10 == 0)
     {
+        LOG_PORT.print("len%10 == 0, use SnifferPacket");
         PrintSnifferPacket(buffer, len);
-        //LOG_PORT.print("len%10 == 0, use SnifferPacket");
     }
     else if (len == 12)
     {
-        //LOG_PORT.print("len==12, discard that shit");
+        LOG_PORT.print("len==12, discard that shit");
     }
     else
     {
-        //LOG_PORT.print("WHAT");
+        LOG_PORT.print("WHAT");
     }
 
-    //LOG_PORT.println("");
+    LOG_PORT.println("");
 
-    //SnifferPacket2 *snifferPacket = (SnifferPacket*) buffer;
-    //showMetadata(snifferPacket);
-    //showData(buffer, length);
 }
 
 /**
