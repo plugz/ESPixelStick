@@ -208,9 +208,23 @@ struct SnifferPacket {
 };
 
 static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
+    char buff[129];
     for(uint16_t i = start; i < start+size; i++) {
-        Serial.write(data[i]);
+        if ((data[i] >= '0' && data[i] <= '9')
+                || (data[i] >= 'a' && data[i] <= 'z')
+                || (data[i] >= 'A' && data[i] <= 'Z'))
+            buff[i - start] = data[i];
+        else
+            buff[i - start] = '.';
+        //Serial.write(data[i]);
     }
+
+    buff[size] = '\0';
+    Serial.print(buff);
+
+    //for(uint16_t i = start; i < start+size; i++) {
+    //    Serial.write(data[i]);
+    //}
 }
 
 static void printDataSpanInt(uint16_t start, uint16_t size, uint8_t* data) {
@@ -309,6 +323,22 @@ static void PrintSnifferPacket(void* buffer, uint16_t len) {
     LOG_PORT.println();
 }
 
+static bool has012(uint8_t* buffer, uint16_t len)
+{
+    uint8_t current = '0';
+    for (unsigned int i = 0; i < len; ++i)
+    {
+        if (buffer[i] == current)
+        {
+            if (current++ == '2')
+                return true;
+        }
+        else
+            current = '0';
+    }
+    return false;
+}
+
 /**
  * Callback for promiscuous mode
  */
@@ -316,6 +346,8 @@ static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t len) {
     //LOG_PORT.print(len, DEC);
     if (len == 128)
     {
+        if (!has012(buffer, len))
+            return;
         LOG_PORT.print("len == 128, use SnifferPacket2");
         SnifferPacket2 *snifferPacket = (SnifferPacket2*) buffer;
         showMetadata(snifferPacket);
@@ -323,6 +355,8 @@ static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t len) {
     }
     else if (len % 10 == 0)
     {
+        if (!has012(buffer, len))
+            return;
         LOG_PORT.print("len%10 == 0, use SnifferPacket");
         PrintSnifferPacket(buffer, len);
     }
