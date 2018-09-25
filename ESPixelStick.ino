@@ -194,183 +194,67 @@ struct SnifferPacket2 {
     uint16_t len;
 };
 
-struct LenSeq {
-  u16 len; // length of packet
-  u16 seq; // serial number of packet, the high 12bits are serial number,
-           // low 14 bits are Fragment number(usually be 0)
-  u8 addr3[6]; // the third address in packet
-};
-struct SnifferPacket {
-  RxControl rx_ctrl;
-  u8 buf[36]; // head of ieee80211 packet
-  u16 cnt; // number count of packet
-  struct LenSeq lenseq[1]; // length of packet
-};
-
-static void printDataSpan(uint16_t start, uint16_t size, uint8_t* data) {
+static void printDataSpan(uint16_t size, uint8_t* data) {
     char buff[129];
-    for(uint16_t i = start; i < start+size; i++) {
+    for(uint16_t i = 0; i < size; i++) {
         if ((data[i] >= '0' && data[i] <= '9')
                 || (data[i] >= 'a' && data[i] <= 'z')
                 || (data[i] >= 'A' && data[i] <= 'Z'))
-            buff[i - start] = data[i];
+            buff[i] = data[i];
         else
-            buff[i - start] = '.';
-        //Serial.write(data[i]);
+            buff[i] = '.';
     }
 
     buff[size] = '\0';
     Serial.print(buff);
-
-    //for(uint16_t i = start; i < start+size; i++) {
-    //    Serial.write(data[i]);
-    //}
 }
 
-static void printDataSpanInt(uint16_t start, uint16_t size, uint8_t* data) {
-    // Too slow, will fire watchdog
-    /*
-    for(uint16_t i = start; i < start+size; i++) {
-        LOG_PORT.print((int)data[i], DEC);
-        LOG_PORT.print(", ");
-    }
-    */
-}
+static char dmxIn[83];
+static int receivedSize = 0;
+static int receivedUniverse = 0;
+static int receivedSequence = 0;
 
-static void getMAC(char *addr, uint8_t* data, uint16_t offset) {
-    sprintf(addr, "%02x:%02x:%02x:%02x:%02x:%02x", data[offset + 0],
-            data[offset + 1], data[offset + 2], data[offset + 3],
-            data[offset + 4], data[offset + 5]);
-}
-
-static void showData(void* snifferPacket_void, uint16_t len) {
-    LOG_PORT.print(" len= ");
-    LOG_PORT.print(len, DEC);
-    LOG_PORT.print(" packet.len= ");
-    LOG_PORT.print(((SnifferPacket2*)snifferPacket_void)->len, DEC);
-    LOG_PORT.print(" packet.cnt= ");
-    LOG_PORT.print(((SnifferPacket2*)snifferPacket_void)->cnt, DEC);
-    LOG_PORT.print("Data:");
-    printDataSpan(0, len, (uint8_t*)snifferPacket_void);
-    LOG_PORT.print("Data(int):");
-    printDataSpanInt(0, len, (uint8_t*)snifferPacket_void);
-    LOG_PORT.println("");
-}
-
-static void showMetadata(void* snifferPacket_void) {
-    SnifferPacket2* snifferPacket = reinterpret_cast<SnifferPacket2*>(snifferPacket_void);
-
-    unsigned int frameControl = ((unsigned int)snifferPacket->data[1] << 8) + snifferPacket->data[0];
-
-    uint8_t version      = (frameControl & 0b0000000000000011) >> 0;
-    uint8_t frameType    = (frameControl & 0b0000000000001100) >> 2;
-    uint8_t frameSubType = (frameControl & 0b0000000011110000) >> 4;
-    uint8_t toDS         = (frameControl & 0b0000000100000000) >> 8;
-    uint8_t fromDS       = (frameControl & 0b0000001000000000) >> 9;
-
-    // Only look for probe request packets
-    if (frameType != TYPE_MANAGEMENT
-            || frameSubType != SUBTYPE_PROBE_REQUEST)
-    {
-        LOG_PORT.println("strange frametype");
+static void readData(struct SnifferPacket2* snifferPacket, uint16_t len) {
+    uint8_t* data = snifferPacket->data;
+    if (data[0] != 0x90) // type ATIM
         return;
-    }
-
-    LOG_PORT.print("RSSI: ");
-    LOG_PORT.print(snifferPacket->rx_ctrl.rssi, DEC);
-
-    LOG_PORT.print(" Ch: ");
-    LOG_PORT.print(wifi_get_channel());
-
-    char addr[] = "00:00:00:00:00:00";
-    getMAC(addr, snifferPacket->data, 10);
-    LOG_PORT.print(" Peer MAC: ");
-    LOG_PORT.print(addr);
-
-    uint8_t SSID_length = snifferPacket->data[25];
-    LOG_PORT.print(" SSID: ");
-    printDataSpan(26, SSID_length, snifferPacket->data);
-
-    LOG_PORT.println("");
-}
-
-static void PrintSnifferPacket(void* buffer, uint16_t len) {
-    SnifferPacket* snifferPacket = reinterpret_cast<SnifferPacket*>(buffer);
-    if (len == 50 + snifferPacket->cnt * 10)
-        LOG_PORT.print("len == 50 + snifferPacker->cnt * 10");
-    else if (snifferPacket->cnt == 0)
-    {
-        LOG_PORT.print("cnt == 0, invalid packet");
+    if (memcmp(data + 4, "ArtRawArtRawArtRaw", 17)) // ArtRawArtRawArtRaw
         return;
-    }
-    else
-    {
-        LOG_PORT.print("FUCK len != 50 + snifferPacker->cnt * 10");
-        return;
-    }
+    int dataLen = 112;
+    if (len < 128)
+        dataLen = len - (128 - 112);
 
-    int size = snifferPacket->lenseq[0].len;
-    LOG_PORT.print("  ;  size=");
-    LOG_PORT.print(size, DEC);
-    LOG_PORT.print("  ;  seq=");
-    LOG_PORT.print(snifferPacket->lenseq[0].seq, HEX);
-    if (size > 36)
-        size = 36;
-    LOG_PORT.print("  ;  data=");
-    printDataSpan(0, size, snifferPacket->buf);
-    LOG_PORT.print("  ;  data(int)=");
-    printDataSpanInt(0, size, snifferPacket->buf);
-    LOG_PORT.println();
-}
+    receivedUniverse = data[24];
+    receivedSequence = data[25];
 
-static bool has012(uint8_t* buffer, uint16_t len)
-{
-    uint8_t current = '0';
-    for (unsigned int i = 0; i < len; ++i)
-    {
-        if (buffer[i] == current)
-        {
-            if (current++ == '2')
-                return true;
-        }
-        else
-            current = '0';
-    }
-    return false;
+    receivedSize = int(data[27]) << 8;
+    receivedSize |= int(data[28]);
+
+    memcpy(dmxIn, data + 29, receivedSize);
+
+//    Serial.print("uni=");
+//    Serial.print(receivedUniverse, DEC);
+//    Serial.print(", seq=");
+//    Serial.print(receivedSequence, DEC);
+//    Serial.print(", len=");
+//    Serial.print(receivedSize, DEC);
+//    Serial.print(", data=");
+//    printDataSpan(receivedSize, data + 29);
+//    Serial.println();
+//
+//    Serial.println(int(data[27]), DEC);
+//    Serial.println(int(data[28]), DEC);
 }
 
 /**
  * Callback for promiscuous mode
  */
 static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t len) {
-    //LOG_PORT.print(len, DEC);
     if (len == 128)
     {
-        if (!has012(buffer, len))
-            return;
-        LOG_PORT.print("len == 128, use SnifferPacket2");
         SnifferPacket2 *snifferPacket = (SnifferPacket2*) buffer;
-        showMetadata(snifferPacket);
-        showData(buffer, len);
+        readData(snifferPacket, len);
     }
-    else if (len % 10 == 0)
-    {
-        if (!has012(buffer, len))
-            return;
-        LOG_PORT.print("len%10 == 0, use SnifferPacket");
-        PrintSnifferPacket(buffer, len);
-    }
-    else if (len == 12)
-    {
-        LOG_PORT.print("len==12, discard that shit");
-    }
-    else
-    {
-        LOG_PORT.print("WHAT");
-    }
-
-    LOG_PORT.println("");
-
 }
 
 /**
