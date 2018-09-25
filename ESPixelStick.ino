@@ -638,9 +638,9 @@ void initWeb() {
 
 // Configuration Validations
 void validateConfig() {
-    // E1.31 Limits
-    if (config.universe < 1)
-        config.universe = 1;
+    // ArtNet Limits
+    if (config.universe < 0)
+        config.universe = 0;
 
     if (config.universe_limit > UNIVERSE_MAX || config.universe_limit < 1)
         config.universe_limit = UNIVERSE_MAX;
@@ -1266,8 +1266,17 @@ void loop() {
 
     handleButton();
 
-    if (rgbEffect.refreshPixels(millis()))
+    if (receivedSize > 0)
+    {
+        int size = receivedSize;
+        if (size > LED_COUNT * 3)
+            size = LED_COUNT * 3;
+        memcpy(pixels.getData(), dmxIn, size);
+        receivedSize = 0;
         needRefresh = true;
+    }
+    //if (rgbEffect.refreshPixels(millis()))
+    //    needRefresh = true;
 /* Streaming refresh */
 #if defined(ESPS_MODE_PIXEL)
     if (needRefresh && pixels.canRefresh()) {
