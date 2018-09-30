@@ -18,20 +18,9 @@
 */
 
 /*****************************************/
-/*        BEGIN - Configuration          */
-/*****************************************/
-
-/* Output Mode has been moved to ESPixelStick.h */
-
-/* Fallback configuration if config.json is empty or fails */
-const char ssid[] = "tarte_a_la_moutarde";
-const char passphrase[] = "abattoir2";
-
-/*****************************************/
 /*         END - Configuration           */
 /*****************************************/
 
-#include <ESP8266WiFi.h>
 #include <Ticker.h>
 #include <AsyncMqttClient.h>
 #include <ESP8266mDNS.h>
@@ -116,9 +105,6 @@ AsyncWebServer      web(HTTP_PORT); // Web Server
 AsyncWebSocket      ws("/ws");      // Web Socket Plugin
 uint8_t             *seqTracker;    // Current sequence numbers for each Universe */
 uint32_t            lastUpdate;     // Update timeout tracker
-WiFiEventHandler    wifiConnectHandler;     // WiFi connect handler
-WiFiEventHandler    wifiDisconnectHandler;  // WiFi disconnect handler
-Ticker              wifiTicker; // Ticker to handle WiFi
 AsyncMqttClient     mqtt;       // MQTT object
 Ticker              mqttTicker; // Ticker to handle MQTT
 
@@ -143,7 +129,6 @@ SerialDriver    serial;         // Serial object
 /////////////////////////////////////////////////////////
 
 void loadConfig();
-void initWifi();
 void initWeb();
 void updateConfig();
 
@@ -261,27 +246,12 @@ static void ICACHE_FLASH_ATTR sniffer_callback(uint8_t *buffer, uint16_t len) {
     }
 }
 
-/**
- * Callback for channel hoping
- */
-//void channelHop()
-//{
-//    // hoping channels 1-14
-//    uint8 new_channel = wifi_get_channel() + 1;
-//    if (new_channel > 14)
-//        new_channel = 1;
-//    wifi_set_channel(new_channel);
-//}
-
 #define DISABLE 0
 #define ENABLE  1
 
 /// } WIFI SNIFF
 
 void setup() {
-    // Configure SDK params
-    //wifi_set_sleep_type(NONE_SLEEP_T);
-
     // Initial pin states
     pinMode(DATA_PIN, OUTPUT);
     digitalWrite(DATA_PIN, LOW);
@@ -303,11 +273,6 @@ void setup() {
     wifi_set_promiscuous_rx_cb(sniffer_callback);
     delay(10);
     wifi_promiscuous_enable(ENABLE);
-
-    // setup the channel hoping callback timer
-    //os_timer_disarm(&channelHop_timer);
-    //os_timer_setfn(&channelHop_timer, (os_timer_func_t *) channelHop, NULL);
-    //os_timer_arm(&channelHop_timer, CHANNEL_HOP_INTERVAL_MS, 1);
     /// } WIFI SNIFF
 
 #if defined(DEBUG)
@@ -329,10 +294,6 @@ void setup() {
 
     // Load configuration from SPIFFS and set Hostname
     loadConfig();
-//    WiFi.hostname(config.hostname);
-
-    // Setup WiFi Handlers
-    //wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
 
     // Setup MQTT Handlers
     //if (config.mqtt) {
@@ -357,105 +318,6 @@ void setup() {
 #else
     updateConfig();
 #endif
-}
-
-/////////////////////////////////////////////////////////
-//
-//  WiFi Section
-//
-/////////////////////////////////////////////////////////
-
-void initWifi() {
-    // Switch to station mode and disconnect just in case
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-
-    connectWifi();
-    uint32_t timeout = millis();
-    while (WiFi.status() != WL_CONNECTED) {
-        LOG_PORT.print(".");
-        delay(500);
-        if (millis() - timeout > CONNECT_TIMEOUT) {
-            LOG_PORT.println("");
-            LOG_PORT.println(F("*** Failed to connect ***"));
-            break;
-        }
-    }
-}
-
-void connectWifi() {
-    delay(secureRandom(100, 500));
-
-    LOG_PORT.println("");
-    LOG_PORT.print(F("Connecting to "));
-    LOG_PORT.print(config.ssid);
-    LOG_PORT.print(F(" as "));
-    LOG_PORT.println(config.hostname);
-
-    WiFi.begin(config.ssid.c_str(), config.passphrase.c_str());
-    if (config.dhcp) {
-        LOG_PORT.print(F("Connecting with DHCP"));
-    } else {
-        // We don't use DNS, so just set it to our gateway
-        WiFi.config(IPAddress(config.ip[0], config.ip[1], config.ip[2], config.ip[3]),
-                    IPAddress(config.gateway[0], config.gateway[1], config.gateway[2], config.gateway[3]),
-                    IPAddress(config.netmask[0], config.netmask[1], config.netmask[2], config.netmask[3]),
-                    IPAddress(config.gateway[0], config.gateway[1], config.gateway[2], config.gateway[3])
-        );
-        LOG_PORT.print(F("Connecting with Static IP"));
-    }
-}
-
-void onWifiConnect(const WiFiEventStationModeGotIP &event) {
-    LOG_PORT.println("");
-    LOG_PORT.print(F("Connected with IP: "));
-    LOG_PORT.println(WiFi.localIP());
-
-    // Setup MQTT connection if enabled
-    if (config.mqtt)
-        connectToMqtt();
-
-    // Setup mDNS / DNS-SD
-    //TODO: Reboot or restart mdns when config.id is changed?
-     char chipId[7] = { 0 };
-    snprintf(chipId, sizeof(chipId), "%06x", ESP.getChipId());
-    MDNS.setInstanceName(config.id + " (" + String(chipId) + ")");
-    if (MDNS.begin(config.hostname.c_str())) {
-        MDNS.addService("http", "tcp", HTTP_PORT);
-        MDNS.addService("e131", "udp", E131_DEFAULT_PORT);
-        MDNS.addServiceTxt("e131", "udp", "TxtVers", String(RDMNET_DNSSD_TXTVERS));
-        MDNS.addServiceTxt("e131", "udp", "ConfScope", RDMNET_DEFAULT_SCOPE);
-        MDNS.addServiceTxt("e131", "udp", "E133Vers", String(RDMNET_DNSSD_E133VERS));
-        MDNS.addServiceTxt("e131", "udp", "CID", String(chipId));
-        MDNS.addServiceTxt("e131", "udp", "Model", "ESPixelStick");
-        MDNS.addServiceTxt("e131", "udp", "Manuf", "Forkineye");
-    } else {
-        LOG_PORT.println(F("*** Error setting up mDNS responder ***"));
-    }
-}
-
-void onWiFiDisconnect(const WiFiEventStationModeDisconnected &event) {
-    LOG_PORT.println(F("*** WiFi Disconnected ***"));
-
-    // Pause MQTT reconnect while WiFi is reconnecting
-    mqttTicker.detach();
-    wifiTicker.once(2, connectWifi);
-}
-
-// Subscribe to "n" universes, starting at "universe"
-void multiSub() {
-    uint8_t count;
-    ip_addr_t ifaddr;
-    ip_addr_t multicast_addr;
-
-    count = uniLast - config.universe + 1;
-    ifaddr.addr = static_cast<uint32_t>(WiFi.localIP());
-    for (uint8_t i = 0; i < count; i++) {
-        multicast_addr.addr = static_cast<uint32_t>(IPAddress(239, 255,
-                (((config.universe + i) >> 8) & 0xff),
-                (((config.universe + i) >> 0) & 0xff)));
-        igmp_joingroup(&ifaddr, &multicast_addr);
-    }
 }
 
 /////////////////////////////////////////////////////////
@@ -486,9 +348,6 @@ void onMqttConnect(bool sessionPresent) {
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
     LOG_PORT.println(F("*** MQTT Disconnected ***"));
-    if (WiFi.isConnected()) {
-        mqttTicker.once(2, connectToMqtt);
-    }
 }
 
 void onMqttMessage(char* topic, char* p_payload,
@@ -749,14 +608,10 @@ void updateConfig() {
     e131.stats.num_packets = 0;
 
     // Initialize for our pixel type
-#if defined(ESPS_MODE_PIXEL)
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
     rgbEffect.begin(pixels.getData(), LED_COUNT);
-#elif defined(ESPS_MODE_SERIAL)
-    serial.begin(&SEROUT_PORT, config.serial_type, config.channel_count, config.baudrate);
-#endif
 
     LOG_PORT.print(F("- Listening for "));
     LOG_PORT.print(config.channel_count);
@@ -764,22 +619,10 @@ void updateConfig() {
     LOG_PORT.print(config.universe);
     LOG_PORT.print(F(" to "));
     LOG_PORT.println(uniLast);
-
-    // Setup IGMP subscriptions if multicast is enabled
-    if (config.multicast)
-        multiSub();
 }
 
 // De-Serialize Network config
 void dsNetworkConfig(JsonObject &json) {
-    // Fallback to embedded ssid and passphrase if null in config
-    config.ssid = json["network"]["ssid"].as<String>();
-    if (!config.ssid.length())
-        config.ssid = ssid;
-
-    config.passphrase = json["network"]["passphrase"].as<String>();
-    if (!config.passphrase.length())
-        config.passphrase = passphrase;
 
     // Network
     for (int i = 0; i < 4; i++) {
@@ -864,8 +707,6 @@ void loadConfig() {
     File file = SPIFFS.open(CONFIG_FILE, "r");
     if (!file) {
         LOG_PORT.println(F("- No configuration file found."));
-        config.ssid = ssid;
-        config.passphrase = passphrase;
         saveConfig();
     } else {
         // Parse CONFIG_FILE json
@@ -895,8 +736,6 @@ void loadConfig() {
     config.id = "ESPixelPlug";
     config.testmode = TestMode::DISABLED;
 
-    config.ssid = ssid;
-    config.passphrase = passphrase;
     config.dhcp = true;
 
     config.universe = 0;
@@ -928,7 +767,6 @@ void serializeConfig(String &jsonString, bool pretty, bool creds) {
 
     // Network
     JsonObject &network = json.createNestedObject("network");
-    network["ssid"] = config.ssid.c_str();
     if (creds)
         network["passphrase"] = config.passphrase.c_str();
     network["hostname"] = config.hostname.c_str();
