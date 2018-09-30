@@ -40,7 +40,6 @@ const char BUILD_DATE[] = __DATE__;
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
-#include <ESPAsyncUDP.h>
 
 #if defined(ESPS_MODE_PIXEL)
 #include "PixelDriver.h"
