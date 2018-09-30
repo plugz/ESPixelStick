@@ -37,15 +37,10 @@ const char BUILD_DATE[] = __DATE__;
 /*         END - Configuration           */
 /*****************************************/
 
-#include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
 
-#if defined(ESPS_MODE_PIXEL)
 #include "PixelDriver.h"
-#elif defined(ESPS_MODE_SERIAL)
-#include "SerialDriver.h"
-#endif
 
 #define DATA_PIN        2       /* Pixel output - GPIO2 */
 #define BUTTON_PIN      0       /* Button input - GPIO0, same as bootloader button */
@@ -103,12 +98,6 @@ enum class TestMode : uint8_t {
     VIEW_STREAM
 };
 
-typedef struct {
-    uint8_t r, g, b;    /* Hold requested color */
-    uint16_t step;      /* Step in testing routine */
-    uint32_t last;      /* Last update */
-} testing_t;
-
 /* Configuration structure */
 typedef struct {
     /* ArtNet */
@@ -125,12 +114,6 @@ typedef struct {
     float       briteVal;       /* brightness lto use */
 } config_t;
 
-
-/* Forward Declarations */
-void serializeConfig(String &jsonString, bool pretty = false, bool creds = false);
-void dsNetworkConfig(JsonObject &json);
-void dsDeviceConfig(JsonObject &json);
-void saveConfig();
 
 void setStatic(uint8_t r, uint8_t g, uint8_t b);
 

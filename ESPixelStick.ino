@@ -21,10 +21,7 @@
 /*         END - Configuration           */
 /*****************************************/
 
-#include <Ticker.h>
-#include <ArduinoJson.h>
 #include <Bounce2.h>
-#include <Hash.h>
 #include "ESPixelStick.h"
 #include "RGBEffectWrapper.hpp"
 #include "wshandler.h"
@@ -59,7 +56,6 @@ NoSerialClass NoSerial;
 // Configuration file
 const char CONFIG_FILE[] = "/config.json";
 
-testing_t           testing;        // Testing mode
 config_t            config;         // Current configuration
 uint32_t            *seqError;      // Sequence error tracking for each universe
 uint16_t            uniLast = 1;    // Last Universe to listen for
