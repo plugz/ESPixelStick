@@ -67,15 +67,9 @@ uint32_t            lastUpdate;     // Update timeout tracker
 Bounce bounce;
 
 // Output Drivers
-#if defined(ESPS_MODE_PIXEL)
 PixelDriver     pixels;         // Pixel object
 RGBEffectWrapper rgbEffect;
 static bool needRefresh = false;
-#elif defined(ESPS_MODE_SERIAL)
-SerialDriver    serial;         // Serial object
-#else
-#error "No valid output mode defined."
-#endif
 
 /////////////////////////////////////////////////////////
 // 
@@ -348,15 +342,9 @@ void loadConfig() {
 void setStatic(uint8_t r, uint8_t g, uint8_t b) {
     uint16_t i = 0;
     while (i <= config.channel_count - 3) {
-#if defined(ESPS_MODE_PIXEL)
         pixels.setValue(i++, r);
         pixels.setValue(i++, g);
         pixels.setValue(i++, b);
-#elif defined(ESPS_MODE_SERIAL)
-        serial.setValue(i++, r);
-        serial.setValue(i++, g);
-        serial.setValue(i++, b);
-#endif
     }
 }
 
@@ -508,13 +496,8 @@ void loop() {
     //if (rgbEffect.refreshPixels(millis()))
     //    needRefresh = true;
 /* Streaming refresh */
-#if defined(ESPS_MODE_PIXEL)
     if (needRefresh && pixels.canRefresh()) {
         pixels.show();
         needRefresh = false;
     }
-#elif defined(ESPS_MODE_SERIAL)
-    if (serial.canRefresh())
-        serial.show();
-#endif
 }
