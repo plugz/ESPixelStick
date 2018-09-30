@@ -30,7 +30,6 @@
 #include <Hash.h>
 #include <SPI.h>
 #include "ESPixelStick.h"
-#include "EFUpdate.h"
 #include "RGBEffectWrapper.hpp"
 #include "wshandler.h"
 #include "gamma.h"
