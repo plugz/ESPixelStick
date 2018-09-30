@@ -49,6 +49,7 @@ const char passphrase[] = "abattoir2";
 #include "wshandler.h"
 #include "pwm.h"
 #include "gamma.h"
+#include "conversions.h"
 
 extern "C" {
 #include <user_interface.h>
@@ -209,28 +210,31 @@ static void printDataSpan(uint16_t size, uint8_t* data) {
     Serial.print(buff);
 }
 
-static char dmxIn[83];
-static int receivedSize = 0;
+static char dmxIn[85 + 1 + 2 + 6];
 static int receivedUniverse = 0;
 static int receivedSequence = 0;
+static int receivedSize = 0;
 
 static void readData(struct SnifferPacket2* snifferPacket, uint16_t len) {
     uint8_t* data = snifferPacket->data;
+    uint8_t* macData = data + 4;
+    uint8_t* essidData = data + 24;
+    uint8_t* strData = data + 27;
     if (data[0] != 0x90) // type ATIM
         return;
-    if (memcmp(data + 4, "ArtRawArtRawArtRaw", 17)) // ArtRawArtRawArtRaw
+    if (memcmp(macData, "Ar", 2) || memcmp(macData + 6, "ArtRaw", 6))
         return;
-    int dataLen = 112;
-    if (len < 128)
-        dataLen = len - (128 - 112);
 
-    receivedUniverse = data[24];
-    receivedSequence = data[25];
+    receivedUniverse = macData[2];
+    receivedSequence = macData[3];
+    receivedSize = macData[4];
+    if (receivedSize > sizeof(dmxIn))
+        receivedSize = sizeof(dmxIn);
 
-    receivedSize = int(data[27]) << 8;
-    receivedSize |= int(data[28]);
-
-    memcpy(dmxIn, data + 29, receivedSize);
+    dmxIn[0] = macData[5];
+    memcpy(dmxIn + 1, essidData, 2);
+    memcpy(dmxIn + 3, macData + 12, 6);
+    memcpy(dmxIn + 9, strData, receivedSize - 9);
 
 //    Serial.print("uni=");
 //    Serial.print(receivedUniverse, DEC);
@@ -1118,6 +1122,19 @@ void handleButton()
 //  Main Loop
 //
 /////////////////////////////////////////////////////////
+static void convertFromYCbCr(uint8_t* rgbFromYCbCr, uint8_t const* ycbcr5bit, unsigned int ycbcr5bitSize)
+{
+    uint8_t cb[4];
+    uint8_t cr[4];
+    for (unsigned int i = 0; i < ycbcr5bitSize / 9; ++i)
+    {
+        conv_cbcr_from_5bit(ycbcr5bit + (i * 9) + 4, cb, cr);
+        for (unsigned int j = 0; j < 4; ++j)
+            conv_ycbcr_to_rgb(rgbFromYCbCr + (i * 3 * 4) + (j * 3),
+                    ycbcr5bit[i * 9 + j], cb[j], cr[j]);
+    }
+}
+
 void loop() {
     e131_packet_t packet;
 
@@ -1268,10 +1285,43 @@ void loop() {
 
     if (receivedSize > 0)
     {
+        static int logCounter = 0;
+        ++logCounter;
+
+        if (logCounter%50==0)
+        {
+            LOG_PORT.print("dmx[0]=");
+            LOG_PORT.print(dmxIn[0], DEC);
+            LOG_PORT.print("dmx[1]=");
+            LOG_PORT.print(dmxIn[1], DEC);
+            LOG_PORT.print("dmx[2]=");
+            LOG_PORT.print(dmxIn[2], DEC);
+            LOG_PORT.print("dmx[3]=");
+            LOG_PORT.print(dmxIn[3], DEC);
+            LOG_PORT.print("dmx[4]=");
+            LOG_PORT.print(dmxIn[4], DEC);
+            LOG_PORT.print("dmx[5]=");
+            LOG_PORT.print(dmxIn[5], DEC);
+        }
+
+
+        uint8_t rgbFromYCbCr[120];
+        uint8_t* input = (uint8_t*)dmxIn;
         int size = receivedSize;
+        if ((receivedUniverse & 0x80) == 0)
+        {
+            if (logCounter%50==0)LOG_PORT.println("converting from ycbcr");
+            input = rgbFromYCbCr;
+            size = receivedSize + (receivedSize / 3);
+            convertFromYCbCr(rgbFromYCbCr, (uint8_t*)dmxIn, receivedSize);
+        }
+        else
+        {
+            if (logCounter%50==0)LOG_PORT.println("not converting from ycbcr");
+        }
         if (size > LED_COUNT * 3)
             size = LED_COUNT * 3;
-        memcpy(pixels.getData(), dmxIn, size);
+        memcpy(pixels.getData(), input, size);
         receivedSize = 0;
         needRefresh = true;
     }
