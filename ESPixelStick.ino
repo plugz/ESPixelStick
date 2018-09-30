@@ -22,7 +22,6 @@
 /*****************************************/
 
 #include <Ticker.h>
-#include <ESPAsyncE131.h>
 #include <ArduinoJson.h>
 #include <Bounce2.h>
 #include <Hash.h>
@@ -61,7 +60,6 @@ NoSerialClass NoSerial;
 // Configuration file
 const char CONFIG_FILE[] = "/config.json";
 
-ESPAsyncE131        e131(10);       // ESPAsyncE131 with X buffers
 testing_t           testing;        // Testing mode
 config_t            config;         // Current configuration
 uint32_t            *seqError;      // Sequence error tracking for each universe
@@ -311,9 +309,6 @@ void updateConfig() {
     if ((seqError = static_cast<uint32_t *>(malloc(uniTotal * 4))))
         memset(seqError, 0x00, uniTotal * 4);
 
-    // Zero out packet stats
-    e131.stats.num_packets = 0;
-
     // Initialize for our pixel type
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
@@ -465,63 +460,10 @@ static void convertFromYCbCr(uint8_t* rgbFromYCbCr, uint8_t const* ycbcr5bit, un
 }
 
 void loop() {
-    e131_packet_t packet;
-
     // Reboot handler
     if (reboot) {
         delay(REBOOT_DELAY);
         ESP.restart();
-    }
-
-    if (true) {
-        // Parse a packet and update pixels
-        if (!e131.isEmpty()) {
-            e131.pull(&packet);
-            uint16_t universe = htons(packet.universe);
-            uint8_t *data = packet.property_values + 1;
-            if ((universe >= config.universe) && (universe <= uniLast)) {
-                // Universe offset and sequence tracking
-                uint8_t uniOffset = (universe - config.universe);
-                if (packet.sequence_number != seqTracker[uniOffset]++) {
-                    seqError[uniOffset]++;
-                    seqTracker[uniOffset] = packet.sequence_number + 1;
-                }
-
-                // Offset the channels if required
-                uint16_t offset = 0;
-                offset = config.channel_start - 1;
-
-                // Find start of data based off the Universe
-                int16_t dataStart = uniOffset * config.universe_limit - offset;
-
-                // Calculate how much data we need for this buffer
-                uint16_t dataStop = config.channel_count;
-                uint16_t channels = htons(packet.property_value_count) - 1;
-                if (config.universe_limit < channels)
-                    channels = config.universe_limit;
-                if ((dataStart + channels) < dataStop)
-                    dataStop = dataStart + channels;
-
-                // Set the data
-                uint16_t buffloc = 0;
-
-                // ignore data from start of first Universe before channel_start
-                if (dataStart < 0) {
-                    dataStart = 0;
-                    buffloc = config.channel_start - 1;
-                }
-
-//                fixture.updateInput(data + dataStart, dataStop - dataStart);
-//                for (int i = dataStart; i < dataStop; i++) {
-//#if defined(ESPS_MODE_PIXEL)
-//                    pixels.setValue(i, data[buffloc]);
-//#elif defined(ESPS_MODE_SERIAL)
-//                    serial.setValue(i, data[buffloc]);
-//#endif
-//                    buffloc++;
-//                }
-            }
-        }
     }
 
     handleButton();
