@@ -127,6 +127,7 @@ struct SnifferPacket2 {
     uint16_t len;
 };
 
+/*
 static void printDataSpan(uint16_t size, uint8_t* data) {
     char buff[129];
     for(uint16_t i = 0; i < size; i++) {
@@ -139,15 +140,18 @@ static void printDataSpan(uint16_t size, uint8_t* data) {
     }
 
     buff[size] = '\0';
-    Serial.print(buff);
+    LOG_PORT.print(buff);
 }
+*/
 
 static char dmxIn[85 + 1 + 2 + 6];
 static int receivedUniverse = 0;
 static int receivedSequence = 0;
-static int receivedSize = 0;
+static unsigned int receivedSize = 0;
 
 static void readData(struct SnifferPacket2* snifferPacket, uint16_t len) {
+    (void)len; // ignore len, data is 112 bytes anyway
+
     uint8_t* data = snifferPacket->data;
     uint8_t* macData = data + 4;
     uint8_t* essidData = data + 24;
@@ -166,7 +170,8 @@ static void readData(struct SnifferPacket2* snifferPacket, uint16_t len) {
     dmxIn[0] = macData[5];
     memcpy(dmxIn + 1, essidData, 2);
     memcpy(dmxIn + 3, macData + 12, 6);
-    memcpy(dmxIn + 9, strData, receivedSize - 9);
+    if (receivedSize > 9)
+        memcpy(dmxIn + 9, strData, receivedSize - 9);
 }
 
 /**
@@ -237,9 +242,6 @@ void setup() {
 // Configuration Validations
 void validateConfig() {
     // ArtNet Limits
-    if (config.universe < 0)
-        config.universe = 0;
-
     if (config.universe_limit > UNIVERSE_MAX || config.universe_limit < 1)
         config.universe_limit = UNIVERSE_MAX;
 
@@ -474,7 +476,7 @@ void loop() {
 
         uint8_t rgbFromYCbCr[120];
         uint8_t* input = (uint8_t*)dmxIn;
-        int size = receivedSize;
+        unsigned int size = receivedSize;
         if ((receivedUniverse & 0x80) == 0)
         {
             if (logCounter%50==0)LOG_PORT.println("converting from ycbcr");

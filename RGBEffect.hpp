@@ -79,7 +79,7 @@ class RGBEffect
                RGBEffectMixingMode mixingMode,
                uint8_t *pixels,
                unsigned int pixelCount,
-               PosArray const& posArray = {});
+               PosArray const& posArray = {{}, 0, 0});
     static PosArray posArraySimple(unsigned int width, unsigned int height);
     static PosArray posArrayZigZag(unsigned int width, unsigned int height);
     static PosArray posArrayFromLedArray(std::vector<int> const& ledArray, unsigned int width, unsigned int height);

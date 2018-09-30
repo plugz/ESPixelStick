@@ -38,7 +38,6 @@ const char BUILD_DATE[] = __DATE__;
 /*****************************************/
 
 #include <ESP8266WiFi.h>
-#include <Ticker.h>
 
 #include "PixelDriver.h"
 

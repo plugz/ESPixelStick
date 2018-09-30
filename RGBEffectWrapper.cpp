@@ -219,13 +219,13 @@ void RGBEffectWrapper::begin()
 
 
     LOG_PORT.println("start effects");
-    int idx = 0;
+    unsigned int idx = 0;
     for (auto& effectDesc : sEffects[_currentEffectsIdx].effects)
     {
         LOG_PORT.print("idx=");
         LOG_PORT.print(idx, DEC);
         LOG_PORT.println();
-        int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].colors.size());
+        unsigned int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].colors.size());
 
         LOG_PORT.print("colorIdx=");
         LOG_PORT.print(colorIdx, DEC);
@@ -253,7 +253,7 @@ void RGBEffectWrapper::begin()
     idx = 0;
     for (auto& strobeEffectDesc : sEffects[_currentEffectsIdx].strobeEffects)
     {
-        int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].strobeColors.size());
+        unsigned int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].strobeColors.size());
 
         _currentStrobeEffects.push_back({});
         _currentStrobeEffects[idx].begin(
@@ -273,17 +273,17 @@ void RGBEffectWrapper::nextColor()
 {
     _currentColorsIdx = (_currentColorsIdx + 1) % (sizeof(sColors) / sizeof(*sColors));
 
-    int idx = 0;
+    unsigned int idx = 0;
     for (auto& effect : _currentEffects)
     {
-        int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].colors.size());
+        unsigned int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].colors.size());
         effect.setColor(sColors[_currentColorsIdx].colors[colorIdx]);
         ++idx;
     }
     idx = 0;
     for (auto& strobeEffect : _currentStrobeEffects)
     {
-        int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].strobeColors.size());
+        unsigned int colorIdx = MYMIN(idx, sColors[_currentColorsIdx].strobeColors.size());
         strobeEffect.setColor(sColors[_currentColorsIdx].strobeColors[colorIdx]);
         ++idx;
     }

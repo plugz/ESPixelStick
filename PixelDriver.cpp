@@ -55,7 +55,7 @@ int PixelDriver::begin(PixelType type, PixelColor color, uint16_t length) {
 
     if (pixdata) free(pixdata);
     szBuffer = length * 3;
-    if (pixdata = static_cast<uint8_t *>(malloc(szBuffer))) {
+    if ((pixdata = static_cast<uint8_t *>(malloc(szBuffer)))) {
         memset(pixdata, 0, szBuffer);
         numPixels = length;
     } else {
@@ -67,7 +67,7 @@ int PixelDriver::begin(PixelType type, PixelColor color, uint16_t length) {
     uint16_t szAsync = szBuffer;
     if (type == PixelType::GECE) {
         if (pbuff) free(pbuff);
-        if (pbuff = static_cast<uint8_t *>(malloc(GECE_PSIZE))) {
+        if ((pbuff = static_cast<uint8_t *>(malloc(GECE_PSIZE)))) {
             memset(pbuff, 0, GECE_PSIZE);
         } else {
             numPixels = 0;
@@ -78,7 +78,7 @@ int PixelDriver::begin(PixelType type, PixelColor color, uint16_t length) {
     }
 
     if (asyncdata) free(asyncdata);
-    if (asyncdata = static_cast<uint8_t *>(malloc(szAsync))) {
+    if ((asyncdata = static_cast<uint8_t *>(malloc(szAsync)))) {
         memset(asyncdata, 0, szAsync);
     } else {
         numPixels = 0;
@@ -100,8 +100,7 @@ int PixelDriver::begin(PixelType type, PixelColor color, uint16_t length) {
 }
 
 void PixelDriver::setPin(uint8_t pin) {
-    if (this->pin >= 0)
-        this->pin = pin;
+    this->pin = pin;
 }
 
 void PixelDriver::setGamma(bool gamma) {
@@ -181,6 +180,7 @@ void PixelDriver::updateOrder(PixelColor color) {
 }
 
 void ICACHE_RAM_ATTR PixelDriver::handleWS2811(void *param) {
+    (void)param;
     /* Process if UART1 */
     if (READ_PERI_REG(UART_INT_ST(UART1))) {
         // Fill the FIFO with new data
