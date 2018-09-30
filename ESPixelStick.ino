@@ -22,7 +22,6 @@
 /*****************************************/
 
 #include <Ticker.h>
-#include <ESPAsyncTCP.h>
 #include <ESPAsyncUDP.h>
 #include <ESPAsyncE131.h>
 #include <ArduinoJson.h>
