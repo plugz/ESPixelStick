@@ -43,7 +43,6 @@ const char BUILD_DATE[] = __DATE__;
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
-#include <AsyncMqttClient.h>
 #include <ESP8266mDNS.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncUDP.h>
@@ -56,7 +55,6 @@ const char BUILD_DATE[] = __DATE__;
 #endif
 
 #define HTTP_PORT       80      /* Default web server port */
-#define MQTT_PORT       1883    /* Default MQTT port */
 #define DATA_PIN        2       /* Pixel output - GPIO2 */
 #define BUTTON_PIN      0       /* Button input - GPIO0, same as bootloader button */
 #define EEPROM_BASE     0       /* EEPROM configuration base address */
@@ -118,8 +116,7 @@ enum class TestMode : uint8_t {
     STATIC,
     CHASE,
     RAINBOW,
-    VIEW_STREAM,
-    MQTT
+    VIEW_STREAM
 };
 
 typedef struct {
@@ -144,14 +141,6 @@ typedef struct {
     uint8_t     gateway[4];
     bool        dhcp;           /* Use DHCP? */
     bool        ap_fallback;    /* Fallback to AP if fail to associate? */
-
-    /* MQTT */
-    bool        mqtt;           /* Use MQTT? */
-    String      mqtt_ip;
-    uint16_t    mqtt_port;
-    String      mqtt_user;
-    String      mqtt_password;
-    String      mqtt_topic;
 
     /* E131 */
     uint16_t    universe;       /* Universe to listen for */
@@ -194,11 +183,6 @@ void saveConfig();
 void connectWifi();
 void onWifiConnect(const WiFiEventStationModeGotIP &event);
 void onWiFiDisconnect(const WiFiEventStationModeDisconnected &event);
-void connectToMqtt();
-void onMqttConnect(bool sessionPresent);
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
-void onMqttMessage(char* topic, char* p_payload,
-        AsyncMqttClientMessageProperties properties, size_t len,size_t index, size_t total);
 void publishRGBState();
 void publishRGBBrightness();
 void publishRGBColor();

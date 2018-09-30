@@ -194,10 +194,7 @@ void procS(uint8_t *data, AsyncWebSocketClient *client) {
             client->text("S1");
             break;
         case '2':   // Set Device Config
-            // Reboot if MQTT changed
             bool reboot = false;
-            if (config.mqtt != json["mqtt"]["enabled"])
-                reboot = true;
 
             dsDeviceConfig(json);
             saveConfig();

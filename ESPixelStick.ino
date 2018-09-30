@@ -22,7 +22,6 @@
 /*****************************************/
 
 #include <Ticker.h>
-#include <AsyncMqttClient.h>
 #include <ESP8266mDNS.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncUDP.h>
@@ -65,33 +64,6 @@ static void _u0_putc(char c){
 NoSerialClass NoSerial;
 #endif
 
-// MQTT State
-const char MQTT_LIGHT_STATE_TOPIC[] = "/light/status";
-const char MQTT_LIGHT_COMMAND_TOPIC[] = "/light/switch";
-
-// MQTT Brightness
-const char MQTT_LIGHT_BRIGHTNESS_STATE_TOPIC[] = "/brightness/status";
-const char MQTT_LIGHT_BRIGHTNESS_COMMAND_TOPIC[] = "/brightness/set";
-
-// MQTT Colors (rgb)
-const char MQTT_LIGHT_RGB_STATE_TOPIC[] = "/rgb/status";
-const char MQTT_LIGHT_RGB_COMMAND_TOPIC[] = "/rgb/set";
-
-// MQTT Payloads by default (on/off)
-const char LIGHT_ON[] = "ON";
-const char LIGHT_OFF[] = "OFF";
-
-// MQTT variables used to store the state, the brightness and the color of the light
-boolean m_rgb_state = false;
-uint8_t m_rgb_brightness = 100;
-uint8_t m_rgb_red = 255;
-uint8_t m_rgb_green = 255;
-uint8_t m_rgb_blue = 255;
-
-// MQTT buffer used to send / receive data
-const uint8_t MSG_BUFFER_SIZE = 20;
-char m_msg_buffer[MSG_BUFFER_SIZE]; 
-
 // Configuration file
 const char CONFIG_FILE[] = "/config.json";
 
@@ -105,8 +77,6 @@ AsyncWebServer      web(HTTP_PORT); // Web Server
 AsyncWebSocket      ws("/ws");      // Web Socket Plugin
 uint8_t             *seqTracker;    // Current sequence numbers for each Universe */
 uint32_t            lastUpdate;     // Update timeout tracker
-AsyncMqttClient     mqtt;       // MQTT object
-Ticker              mqttTicker; // Ticker to handle MQTT
 
 // button
 Bounce bounce;
@@ -220,19 +190,6 @@ static void readData(struct SnifferPacket2* snifferPacket, uint16_t len) {
     memcpy(dmxIn + 1, essidData, 2);
     memcpy(dmxIn + 3, macData + 12, 6);
     memcpy(dmxIn + 9, strData, receivedSize - 9);
-
-//    Serial.print("uni=");
-//    Serial.print(receivedUniverse, DEC);
-//    Serial.print(", seq=");
-//    Serial.print(receivedSequence, DEC);
-//    Serial.print(", len=");
-//    Serial.print(receivedSize, DEC);
-//    Serial.print(", data=");
-//    printDataSpan(receivedSize, data + 29);
-//    Serial.println();
-//
-//    Serial.println(int(data[27]), DEC);
-//    Serial.println(int(data[28]), DEC);
 }
 
 /**
@@ -295,17 +252,6 @@ void setup() {
     // Load configuration from SPIFFS and set Hostname
     loadConfig();
 
-    // Setup MQTT Handlers
-    //if (config.mqtt) {
-    //    mqtt.onConnect(onMqttConnect);
-    //    mqtt.onDisconnect(onMqttDisconnect);
-    //    mqtt.onMessage(onMqttMessage);
-    //    mqtt.setServer(config.mqtt_ip.c_str(), config.mqtt_port);
-    //    if (config.mqtt_user.length() > 0)
-    //        mqtt.setCredentials(config.mqtt_user.c_str(), config.mqtt_password.c_str());
-    //}
-
-
     // Configure the outputs
 #if defined (ESPS_SUPPORT_PWM)
     //setupPWM();
@@ -319,118 +265,6 @@ void setup() {
     updateConfig();
 #endif
 }
-
-/////////////////////////////////////////////////////////
-//
-//  MQTT Section
-//
-/////////////////////////////////////////////////////////
-
-void connectToMqtt() {
-    LOG_PORT.print(F("- Connecting to MQTT Broker "));
-    LOG_PORT.println(config.mqtt_ip);
-    mqtt.connect();
-}
-
-void onMqttConnect(bool sessionPresent) {
-    LOG_PORT.println(F("- MQTT Connected"));
-
-    // Setup subscriptions
-    mqtt.subscribe(String(config.mqtt_topic + MQTT_LIGHT_COMMAND_TOPIC).c_str(), 0);
-    mqtt.subscribe(String(config.mqtt_topic + MQTT_LIGHT_BRIGHTNESS_COMMAND_TOPIC).c_str(), 0);
-    mqtt.subscribe(String(config.mqtt_topic + MQTT_LIGHT_RGB_COMMAND_TOPIC).c_str(), 0);
-
-    // Publish state
-    publishRGBState();
-    publishRGBBrightness();
-    publishRGBColor();
-}
-
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
-    LOG_PORT.println(F("*** MQTT Disconnected ***"));
-}
-
-void onMqttMessage(char* topic, char* p_payload,
-        AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-
-    String payload;
-    for (uint8_t i = 0; i < len; i++)
-        payload.concat((char)p_payload[i]);
-/*
-LOG_PORT.print("Topic: ");
-LOG_PORT.print(topic);
-LOG_PORT.print(" | Payload: ");
-LOG_PORT.println(payload);
-*/
-    // Handle message topic
-    if (String(config.mqtt_topic + MQTT_LIGHT_COMMAND_TOPIC).equals(topic)) {
-    // Test if the payload is equal to "ON" or "OFF"
-        if (payload.equals(String(LIGHT_ON))) {
-            config.testmode = TestMode::MQTT;
-            if (m_rgb_state != true) {
-                m_rgb_state = true;
-                setStatic(m_rgb_red * m_rgb_brightness / 100,
-                        m_rgb_green * m_rgb_brightness / 100,
-                        m_rgb_blue * m_rgb_brightness / 100);
-                publishRGBState();
-            }
-        } else if (payload.equals(String(LIGHT_OFF))) {
-            config.testmode = TestMode::DISABLED;
-            if (m_rgb_state != false) {
-                m_rgb_state = false;
-                setStatic(0, 0, 0);
-                publishRGBState();
-            }
-        }
-    } else if (String(config.mqtt_topic + MQTT_LIGHT_BRIGHTNESS_COMMAND_TOPIC).equals(topic)) {
-        uint8_t brightness = payload.toInt();
-        if (brightness > 100)
-            brightness = 100;
-        m_rgb_brightness = brightness;
-        setStatic(m_rgb_red * m_rgb_brightness / 100,
-                m_rgb_green * m_rgb_brightness / 100,
-                m_rgb_blue * m_rgb_brightness / 100);
-        publishRGBBrightness();
-    } else if (String(config.mqtt_topic + MQTT_LIGHT_RGB_COMMAND_TOPIC).equals(topic)) {
-        // Get the position of the first and second commas
-        uint8_t firstIndex = payload.indexOf(',');
-        uint8_t lastIndex = payload.lastIndexOf(',');
-    
-        m_rgb_red = payload.substring(0, firstIndex).toInt();
-        m_rgb_green = payload.substring(firstIndex + 1, lastIndex).toInt();
-        m_rgb_blue = payload.substring(lastIndex + 1).toInt();
-        setStatic(m_rgb_red * m_rgb_brightness / 100,
-                m_rgb_green * m_rgb_brightness / 100,
-                m_rgb_blue * m_rgb_brightness / 100);
-        publishRGBColor();
-    }
-}
-
-// Called to publish the state of the led (on/off)
-void publishRGBState() {
-    if (m_rgb_state) {
-        mqtt.publish(String(config.mqtt_topic + MQTT_LIGHT_STATE_TOPIC).c_str(),
-                0, true, LIGHT_ON);
-    } else {
-        mqtt.publish(String(config.mqtt_topic + MQTT_LIGHT_STATE_TOPIC).c_str(),
-                0, true, LIGHT_OFF);
-    }
-}
-
-// Called to publish the brightness of the led (0-100)
-void publishRGBBrightness() {
-    snprintf(m_msg_buffer, MSG_BUFFER_SIZE, "%d", m_rgb_brightness);
-    mqtt.publish(String(config.mqtt_topic + MQTT_LIGHT_BRIGHTNESS_STATE_TOPIC).c_str(),
-            0, true, m_msg_buffer);
-}
-
-// Called to publish the colors of the led (xx(x),xx(x),xx(x))
-void publishRGBColor() {
-    snprintf(m_msg_buffer, MSG_BUFFER_SIZE, "%d,%d,%d", m_rgb_red, m_rgb_green, m_rgb_blue);
-    mqtt.publish(String(config.mqtt_topic + MQTT_LIGHT_RGB_STATE_TOPIC).c_str(),
-            0, true, m_msg_buffer);
-}
-
 
 /////////////////////////////////////////////////////////
 // 
@@ -512,17 +346,6 @@ void validateConfig() {
         config.channel_start = 1;
     else if (config.channel_start > config.universe_limit)
         config.channel_start = config.universe_limit;
-
-    // Set default MQTT port if missing
-    if (config.mqtt_port == 0)
-        config.mqtt_port = MQTT_PORT;
-
-    // Generate default MQTT topic if needed
-    if (!config.mqtt_topic.length()) {
-        char chipId[7] = { 0 };
-        snprintf(chipId, sizeof(chipId), "%06x", ESP.getChipId());
-        config.mqtt_topic = "diy/esps/" + String(chipId);
-    }
 
 #if defined(ESPS_SUPPORT_PWM)
     config.devmode.MPWM = true;
@@ -654,14 +477,6 @@ void dsDeviceConfig(JsonObject &json) {
     config.channel_count = json["e131"]["channel_count"];
     config.multicast = json["e131"]["multicast"];
 
-    // MQTT
-    config.mqtt = json["mqtt"]["enabled"];
-    config.mqtt_ip = json["mqtt"]["ip"].as<String>();
-    config.mqtt_port = json["mqtt"]["port"];
-    config.mqtt_user = json["mqtt"]["user"].as<String>();
-    config.mqtt_password = json["mqtt"]["password"].as<String>();
-    config.mqtt_topic = json["mqtt"]["topic"].as<String>();
-
 #if defined(ESPS_MODE_PIXEL)
     /* Pixel */
     config.pixel_type = PixelType(static_cast<uint8_t>(json["pixel"]["type"]));
@@ -781,15 +596,6 @@ void serializeConfig(String &jsonString, bool pretty, bool creds) {
     network["dhcp"] = config.dhcp;
     network["ap_fallback"] = config.ap_fallback;
 
-    // MQTT
-    JsonObject &_mqtt = json.createNestedObject("mqtt");
-    _mqtt["enabled"] = config.mqtt;
-    _mqtt["ip"] = config.mqtt_ip.c_str();
-    _mqtt["port"] = config.mqtt_port;
-    _mqtt["user"] = config.mqtt_user.c_str();
-    _mqtt["password"] = config.mqtt_password.c_str();
-    _mqtt["topic"] = config.mqtt_topic.c_str();
-
     // E131
     JsonObject &e131 = json.createNestedObject("e131");
     e131["universe"] = config.universe;
@@ -860,7 +666,7 @@ void saveConfig() {
 
 /////////////////////////////////////////////////////////
 //
-//  Set routines for Testing and MQTT
+//  Set routines for Testing
 //
 /////////////////////////////////////////////////////////
 
