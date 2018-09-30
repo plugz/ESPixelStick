@@ -33,9 +33,6 @@ const char BUILD_DATE[] = __DATE__;
 
 #define LED_COUNT 40
 
-/* Include support for PWM */
-//#define ESPS_SUPPORT_PWM
-
 /*****************************************/
 /*         END - Configuration           */
 /*****************************************/
@@ -43,10 +40,8 @@ const char BUILD_DATE[] = __DATE__;
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
-#include <ESP8266mDNS.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncUDP.h>
-#include <ESPAsyncWebServer.h>
 
 #if defined(ESPS_MODE_PIXEL)
 #include "PixelDriver.h"
@@ -54,7 +49,6 @@ const char BUILD_DATE[] = __DATE__;
 #include "SerialDriver.h"
 #endif
 
-#define HTTP_PORT       80      /* Default web server port */
 #define DATA_PIN        2       /* Pixel output - GPIO2 */
 #define BUTTON_PIN      0       /* Button input - GPIO0, same as bootloader button */
 #define EEPROM_BASE     0       /* EEPROM configuration base address */
@@ -81,13 +75,6 @@ extern NoSerialClass NoSerial;
 #define LOG_PORT NoSerial
 #define NOSERIALCLASS 1
 #endif
-
-/* E1.33 / RDMnet stuff - to be moved to library */
-#define RDMNET_DNSSD_SRV_TYPE   "draft-e133.tcp"
-#define RDMNET_DEFAULT_SCOPE    "default"
-#define RDMNET_DEFAULT_DOMAIN   "local"
-#define RDMNET_DNSSD_TXTVERS    1
-#define RDMNET_DNSSD_E133VERS   1
 
 /* Configuration file params */
 #define CONFIG_MAX_SIZE 2048    /* Sanity limit for config file */
@@ -127,50 +114,18 @@ typedef struct {
 
 /* Configuration structure */
 typedef struct {
-    /* Device */
-    String      id;             /* Device ID */
-    DevCap      devmode;        /* Device Mode - used for reporting mode, can't be set */
-    TestMode    testmode;       /* Testing mode */
-
-    /* Network */
-    String      ssid;
-    String      passphrase;
-    String      hostname;
-    uint8_t     ip[4];
-    uint8_t     netmask[4];
-    uint8_t     gateway[4];
-    bool        dhcp;           /* Use DHCP? */
-    bool        ap_fallback;    /* Fallback to AP if fail to associate? */
-
-    /* E131 */
+    /* ArtNet */
     uint16_t    universe;       /* Universe to listen for */
     uint16_t    universe_limit; /* Universe boundary limit */
     uint16_t    channel_start;  /* Channel to start listening at - 1 based */
     uint16_t    channel_count;  /* Number of channels */
-    bool        multicast;      /* Enable multicast listener */
 
-#if defined(ESPS_MODE_PIXEL)
     /* Pixels */
     PixelType   pixel_type;     /* Pixel type */
     PixelColor  pixel_color;    /* Pixel color order */
     bool        gamma;          /* Use gamma map? */
     float       gammaVal;       /* gamma value to use */
     float       briteVal;       /* brightness lto use */
-#elif defined(ESPS_MODE_SERIAL)
-    /* Serial */
-    SerialType  serial_type;    /* Serial type */
-    BaudRate    baudrate;       /* Baudrate */
-#endif
-
-#if defined(ESPS_SUPPORT_PWM)
-    bool        pwm_global_enabled; /* is pwm runtime enabled? */
-    int         pwm_freq;           /* pwm frequency */
-    bool        pwm_gamma;          /* is pwm gamma enabled? */
-    uint16_t    pwm_gpio_dmx[17];   /* which dmx channel is gpio[n] mapped to? */
-    uint32_t    pwm_gpio_enabled;   /* is gpio[n] enabled? */
-    uint32_t    pwm_gpio_invert;    /* is gpio[n] active high or active low? */
-    uint32_t    pwm_gpio_digital;   /* is gpio[n] digital or "analog"? */
-#endif
 } config_t;
 
 
@@ -180,12 +135,6 @@ void dsNetworkConfig(JsonObject &json);
 void dsDeviceConfig(JsonObject &json);
 void saveConfig();
 
-void connectWifi();
-void onWifiConnect(const WiFiEventStationModeGotIP &event);
-void onWiFiDisconnect(const WiFiEventStationModeDisconnected &event);
-void publishRGBState();
-void publishRGBBrightness();
-void publishRGBColor();
 void setStatic(uint8_t r, uint8_t g, uint8_t b);
 
 #endif /* ESPIXELSTICK_H_ */

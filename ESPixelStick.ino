@@ -22,10 +22,8 @@
 /*****************************************/
 
 #include <Ticker.h>
-#include <ESP8266mDNS.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncUDP.h>
-#include <ESPAsyncWebServer.h>
 #include <ESPAsyncE131.h>
 #include <ArduinoJson.h>
 #include <Bounce2.h>
@@ -35,7 +33,6 @@
 #include "EFUpdate.h"
 #include "RGBEffectWrapper.hpp"
 #include "wshandler.h"
-#include "pwm.h"
 #include "gamma.h"
 #include "conversions.h"
 
@@ -73,8 +70,6 @@ config_t            config;         // Current configuration
 uint32_t            *seqError;      // Sequence error tracking for each universe
 uint16_t            uniLast = 1;    // Last Universe to listen for
 bool                reboot = false; // Reboot flag
-AsyncWebServer      web(HTTP_PORT); // Web Server
-AsyncWebSocket      ws("/ws");      // Web Socket Plugin
 uint8_t             *seqTracker;    // Current sequence numbers for each Universe */
 uint32_t            lastUpdate;     // Update timeout tracker
 
@@ -99,7 +94,6 @@ SerialDriver    serial;         // Serial object
 /////////////////////////////////////////////////////////
 
 void loadConfig();
-void initWeb();
 void updateConfig();
 
 // Radio config
@@ -237,9 +231,6 @@ void setup() {
     system_set_os_print(1);
 #endif
 
-    // Enable SPIFFS
-    SPIFFS.begin();
-
     LOG_PORT.println("");
     LOG_PORT.print(F("ESPixelStick v"));
     for (uint8_t i = 0; i < strlen_P(VERSION); i++)
@@ -249,82 +240,9 @@ void setup() {
         LOG_PORT.print((char)(pgm_read_byte(BUILD_DATE + i)));
     LOG_PORT.println(")");
 
-    // Load configuration from SPIFFS and set Hostname
-    loadConfig();
-
-    // Configure the outputs
-#if defined (ESPS_SUPPORT_PWM)
-    //setupPWM();
-#endif
-
-#if defined (ESPS_MODE_PIXEL)
     pixels.setPin(DATA_PIN);
     updateConfig();
     pixels.show();
-#else
-    updateConfig();
-#endif
-}
-
-/////////////////////////////////////////////////////////
-// 
-//  Web Section
-//
-/////////////////////////////////////////////////////////
-
-// Configure and start the web server
-void initWeb() {
-    // Handle OTA update from asynchronous callbacks
-    Update.runAsync(true);
-
-    // Add header for SVG plot support?
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-
-    // Setup WebSockets
-    ws.onEvent(wsEvent);
-    web.addHandler(&ws);
-
-    // Heap status handler
-    web.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/plain", String(ESP.getFreeHeap()));
-    });
-
-    // JSON Config Handler
-    web.on("/conf", HTTP_GET, [](AsyncWebServerRequest *request) {
-        String jsonString;
-        serializeConfig(jsonString, true);
-        request->send(200, "text/json", jsonString);
-    });
-
-    // gamma debugging Config Handler
-    web.on("/gamma", HTTP_GET, [](AsyncWebServerRequest *request) {
-        AsyncResponseStream *response = request->beginResponseStream("text/plain");
-        for (int i = 0; i < 256; i++) {
-          response->printf ("%5d,", GAMMA_TABLE[i]);
-          if (i % 16 == 15) {
-            response->printf("\r\n");
-          }
-        }
-        request->send(response);
-    });
-
-    // Firmware upload handler
-    web.on("/updatefw", HTTP_POST, [](AsyncWebServerRequest *request) {
-        ws.textAll("X6");
-    }, handle_fw_upload);
-
-    // Static Handler
-    web.serveStatic("/", SPIFFS, "/www/").setDefaultFile("index.html");
-    //web.serveStatic("/config.json", SPIFFS, "/config.json");
-
-    web.onNotFound([](AsyncWebServerRequest *request) {
-        request->send(404, "text/plain", "Page not found");
-    });
-
-    web.begin();
-
-    LOG_PORT.print(F("- Web Server started on port "));
-    LOG_PORT.println(HTTP_PORT);
 }
 
 /////////////////////////////////////////////////////////
@@ -346,16 +264,6 @@ void validateConfig() {
         config.channel_start = 1;
     else if (config.channel_start > config.universe_limit)
         config.channel_start = config.universe_limit;
-
-#if defined(ESPS_SUPPORT_PWM)
-    config.devmode.MPWM = true;
-#endif
-
-#if defined(ESPS_MODE_PIXEL)
-    // Set Mode
-//    config.devmode = DevMode::MPIXEL;
-    config.devmode.MPIXEL = true;
-    config.devmode.MSERIAL = false;
 
     // Generic channel limits for pixels
     if (config.channel_count % 3)
@@ -382,27 +290,6 @@ void validateConfig() {
     if (config.briteVal <= 0) {
         config.briteVal = 1.0;
     }
-#elif defined(ESPS_MODE_SERIAL)
-    // Set Mode
-//    config.devmode = DevMode::MSERIAL;
-    config.devmode.MPIXEL = false;
-    config.devmode.MSERIAL = true;
-
-    // Generic serial channel limits
-    if (config.channel_count > RENARD_LIMIT)
-        config.channel_count = RENARD_LIMIT;
-    else if (config.channel_count < 1)
-        config.channel_count = 1;
-
-    if (config.serial_type == SerialType::DMX512 && config.channel_count > UNIVERSE_MAX)
-        config.channel_count = UNIVERSE_MAX;
-
-    // Baud rate check
-    if (config.baudrate > BaudRate::BR_460800)
-        config.baudrate = BaudRate::BR_460800;
-    else if (config.baudrate < BaudRate::BR_38400)
-        config.baudrate = BaudRate::BR_57600;
-#endif
 }
 
 void updateConfig() {
@@ -444,120 +331,16 @@ void updateConfig() {
     LOG_PORT.println(uniLast);
 }
 
-// De-Serialize Network config
-void dsNetworkConfig(JsonObject &json) {
-
-    // Network
-    for (int i = 0; i < 4; i++) {
-        config.ip[i] = json["network"]["ip"][i];
-        config.netmask[i] = json["network"]["netmask"][i];
-        config.gateway[i] = json["network"]["gateway"][i];
-    }
-    config.dhcp = json["network"]["dhcp"];
-    config.ap_fallback = json["network"]["ap_fallback"];
-
-    // Generate default hostname if needed
-    config.hostname = json["network"]["hostname"].as<String>();
-    if (!config.hostname.length()) {
-        char chipId[7] = { 0 };
-        snprintf(chipId, sizeof(chipId), "%06x", ESP.getChipId());
-        config.hostname = "esps-" + String(chipId);
-    }
-}
-
-// De-serialize Device Config
-void dsDeviceConfig(JsonObject &json) {
-    // Device
-    config.id = json["device"]["id"].as<String>();
-
-    // E131
-    config.universe = json["e131"]["universe"];
-    config.universe_limit = json["e131"]["universe_limit"];
-    config.channel_start = json["e131"]["channel_start"];
-    config.channel_count = json["e131"]["channel_count"];
-    config.multicast = json["e131"]["multicast"];
-
-#if defined(ESPS_MODE_PIXEL)
-    /* Pixel */
-    config.pixel_type = PixelType(static_cast<uint8_t>(json["pixel"]["type"]));
-    config.pixel_color = PixelColor(static_cast<uint8_t>(json["pixel"]["color"]));
-    config.gamma = json["pixel"]["gamma"];
-    config.gammaVal = json["pixel"]["gammaVal"];
-    config.briteVal = json["pixel"]["briteVal"];
-
-#elif defined(ESPS_MODE_SERIAL)
-    /* Serial */
-    config.serial_type = SerialType(static_cast<uint8_t>(json["serial"]["type"]));
-    config.baudrate = BaudRate(static_cast<uint32_t>(json["serial"]["baudrate"]));
-#endif
-
-#if defined(ESPS_SUPPORT_PWM)
-    /* PWM */
-    config.pwm_global_enabled = json["pwm"]["enabled"];
-    config.pwm_freq = json["pwm"]["freq"];
-    config.pwm_gamma = json["pwm"]["gamma"];
-    config.pwm_gpio_invert = 0;
-    config.pwm_gpio_digital = 0;
-    config.pwm_gpio_enabled = 0;
-    for (int gpio = 0; gpio < NUM_GPIO; gpio++) {
-        if (valid_gpio_mask & 1<<gpio) {
-            config.pwm_gpio_dmx[gpio] = json["pwm"]["gpio" + (String)gpio + "_channel"];
-            if (json["pwm"]["gpio" + (String)gpio + "_invert"])
-                config.pwm_gpio_invert |= 1<<gpio;
-            if (json["pwm"]["gpio" + (String)gpio + "_digital"])
-                config.pwm_gpio_digital |= 1<<gpio;
-            if (json["pwm"]["gpio" + (String)gpio + "_enabled"])
-                config.pwm_gpio_enabled |= 1<<gpio;
-        }
-    }
-#endif
-}
-
 // Load configugration JSON file
 void loadConfig() {
     // Zeroize Config struct
     memset(&config, 0, sizeof(config));
 
-    // Load CONFIG_FILE json. Create and init with defaults if not found
-    File file = SPIFFS.open(CONFIG_FILE, "r");
-    if (!file) {
-        LOG_PORT.println(F("- No configuration file found."));
-        saveConfig();
-    } else {
-        // Parse CONFIG_FILE json
-        size_t size = file.size();
-        if (size > CONFIG_MAX_SIZE) {
-            LOG_PORT.println(F("*** Configuration File too large ***"));
-            return;
-        }
-
-        std::unique_ptr<char[]> buf(new char[size]);
-        file.readBytes(buf.get(), size);
-
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject &json = jsonBuffer.parseObject(buf.get());
-        if (!json.success()) {
-            LOG_PORT.println(F("*** Configuration File Format Error ***"));
-            return;
-        }
-
-        dsNetworkConfig(json);
-        dsDeviceConfig(json);
-
-        LOG_PORT.println(F("- Configuration loaded."));
-    }
-
     // Override config
-    config.id = "ESPixelPlug";
-    config.testmode = TestMode::DISABLED;
-
-    config.dhcp = true;
-
     config.universe = 0;
     config.universe_limit = UNIVERSE_MAX;
     config.channel_start = 1;
     config.channel_count = LED_COUNT * 3;
-    config.multicast = true;
 
     config.pixel_type = PixelType::WS2811;
     config.pixel_color = PixelColor::GRB;
@@ -568,101 +351,6 @@ void loadConfig() {
     // Validate it
     validateConfig();
 }
-
-// Serialize the current config into a JSON string
-void serializeConfig(String &jsonString, bool pretty, bool creds) {
-    // Create buffer and root object
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
-
-    // Device
-    JsonObject &device = json.createNestedObject("device");
-    device["id"] = config.id.c_str();
-    device["mode"] = config.devmode.toInt();
-
-    // Network
-    JsonObject &network = json.createNestedObject("network");
-    if (creds)
-        network["passphrase"] = config.passphrase.c_str();
-    network["hostname"] = config.hostname.c_str();
-    JsonArray &ip = network.createNestedArray("ip");
-    JsonArray &netmask = network.createNestedArray("netmask");
-    JsonArray &gateway = network.createNestedArray("gateway");
-    for (int i = 0; i < 4; i++) {
-        ip.add(config.ip[i]);
-        netmask.add(config.netmask[i]);
-        gateway.add(config.gateway[i]);
-    }
-    network["dhcp"] = config.dhcp;
-    network["ap_fallback"] = config.ap_fallback;
-
-    // E131
-    JsonObject &e131 = json.createNestedObject("e131");
-    e131["universe"] = config.universe;
-    e131["universe_limit"] = config.universe_limit;
-    e131["channel_start"] = config.channel_start;
-    e131["channel_count"] = config.channel_count;
-    e131["multicast"] = config.multicast;
-
-#if defined(ESPS_MODE_PIXEL)
-    // Pixel
-    JsonObject &pixel = json.createNestedObject("pixel");
-    pixel["type"] = static_cast<uint8_t>(config.pixel_type);
-    pixel["color"] = static_cast<uint8_t>(config.pixel_color);
-    pixel["gamma"] = config.gamma;
-    pixel["gammaVal"] = config.gammaVal;
-    pixel["briteVal"] = config.briteVal;
-
-#elif defined(ESPS_MODE_SERIAL)
-    // Serial
-    JsonObject &serial = json.createNestedObject("serial");
-    serial["type"] = static_cast<uint8_t>(config.serial_type);
-    serial["baudrate"] = static_cast<uint32_t>(config.baudrate);
-#endif
-
-#if defined(ESPS_SUPPORT_PWM)
-    // PWM
-    JsonObject &pwm = json.createNestedObject("pwm");
-    pwm["enabled"] = config.pwm_global_enabled;
-    pwm["freq"] = config.pwm_freq;
-    pwm["gamma"] = config.pwm_gamma;
-    
-    for (int gpio = 0; gpio < NUM_GPIO; gpio++ ) {
-        if (valid_gpio_mask & 1<<gpio) {
-            pwm["gpio" + (String)gpio + "_channel"] = static_cast<uint16_t>(config.pwm_gpio_dmx[gpio]);
-            pwm["gpio" + (String)gpio + "_enabled"] = static_cast<bool>(config.pwm_gpio_enabled & 1<<gpio);
-            pwm["gpio" + (String)gpio + "_invert"] = static_cast<bool>(config.pwm_gpio_invert & 1<<gpio);
-            pwm["gpio" + (String)gpio + "_digital"] = static_cast<bool>(config.pwm_gpio_digital & 1<<gpio);
-        }
-    }
-#endif
-
-    if (pretty)
-        json.prettyPrintTo(jsonString);
-    else
-        json.printTo(jsonString);
-}
-
-// Save configuration JSON file
-void saveConfig() {
-    // Update Config
-    updateConfig();
-
-    // Serialize Config
-    String jsonString;
-    serializeConfig(jsonString, true, true);
-
-    // Save Config
-    File file = SPIFFS.open(CONFIG_FILE, "w");
-    if (!file) {
-        LOG_PORT.println(F("*** Error creating configuration file ***"));
-        return;
-    } else {
-        file.println(jsonString);
-        LOG_PORT.println(F("* Configuration saved."));
-    }
-}
-
 
 /////////////////////////////////////////////////////////
 //
@@ -788,7 +476,7 @@ void loop() {
         ESP.restart();
     }
 
-    if (config.testmode == TestMode::DISABLED || config.testmode == TestMode::VIEW_STREAM) {
+    if (true) {
         // Parse a packet and update pixels
         if (!e131.isEmpty()) {
             e131.pull(&packet);
@@ -836,92 +524,6 @@ void loop() {
 //                    buffloc++;
 //                }
             }
-        }
-    } else {  // Other testmodes
-        switch (config.testmode) {
-            case TestMode::STATIC: {
-                setStatic(testing.r, testing.g, testing.b);
-                break;
-            }
-
-            case TestMode::CHASE:
-                // Run chase routine
-                if (millis() - testing.last > 100) {
-                    // Rime for new step
-                    testing.last = millis();
-#if defined(ESPS_MODE_PIXEL)
-                    // Clear whole string
-                    for (int y =0; y < config.channel_count; y++)
-                        pixels.setValue(y, 0);
-                    // Set pixel at step
-                    int ch_offset = testing.step*3;
-                    pixels.setValue(ch_offset++, testing.r);
-                    pixels.setValue(ch_offset++, testing.g);
-                    pixels.setValue(ch_offset, testing.b);
-                    testing.step++;
-                    if (testing.step >= (config.channel_count/3))
-                        testing.step = 0;
-#elif defined(ESPS_MODE_SERIAL)
-                    for (int y =0; y < config.channel_count; y++)
-                        serial.setValue(y, 0);
-                    // Set pixel at step
-                    serial.setValue(testing.step++, 0xFF);
-                    if (testing.step >= config.channel_count)
-                        testing.step = 0;
-#endif
-                }
-                break;
-
-            case TestMode::RAINBOW:
-                // Run rainbow routine
-                if (millis() - testing.last > 50) {
-                    testing.last = millis();
-                    uint16_t i, WheelPos, num_pixels;
-                    num_pixels = config.channel_count / 3;
-                    if (testing.step > 255) {
-                        testing.step=0;
-                    }
-                    for (i=0; i < (num_pixels); i++) {
-                        int ch_offset = i*3;
-                        WheelPos = 255 - (((i * 255 / num_pixels) + testing.step) & 255);
-#if defined(ESPS_MODE_PIXEL)
-                        if (WheelPos < 85) {
-                            pixels.setValue(ch_offset++, 255 - WheelPos * 3);
-                            pixels.setValue(ch_offset++, 0);
-                            pixels.setValue(ch_offset, WheelPos * 3);
-                        } else if (WheelPos < 170) {
-                            WheelPos -= 85;
-                            pixels.setValue(ch_offset++, 0);
-                            pixels.setValue(ch_offset++, WheelPos * 3);
-                            pixels.setValue(ch_offset, 255 - WheelPos * 3);
-                        } else {
-                            WheelPos -= 170;
-                            pixels.setValue(ch_offset++, WheelPos * 3);
-                            pixels.setValue(ch_offset++,255 - WheelPos * 3);
-                            pixels.setValue(ch_offset, 0);
-                        }
-#elif defined(ESPS_MODE_SERIAL)
-                        if (WheelPos < 85) {
-                            serial.setValue(ch_offset++, 255 - WheelPos * 3);
-                            serial.setValue(ch_offset++, 0);
-                            serial.setValue(ch_offset, WheelPos * 3);
-                        } else if (WheelPos < 170) {
-                            WheelPos -= 85;
-                            serial.setValue(ch_offset++, 0);
-                            serial.setValue(ch_offset++, WheelPos * 3);
-                            serial.setValue(ch_offset, 255 - WheelPos * 3);
-                        } else {
-                            WheelPos -= 170;
-                            serial.setValue(ch_offset++, WheelPos * 3);
-                            serial.setValue(ch_offset++,255 - WheelPos * 3);
-                            serial.setValue(ch_offset, 0);
-                        }
-#endif
-                    }
-
-                    testing.step++;
-                }
-                break;
         }
     }
 
@@ -980,10 +582,5 @@ void loop() {
 #elif defined(ESPS_MODE_SERIAL)
     if (serial.canRefresh())
         serial.show();
-#endif
-
-/* Update the PWM outputs */
-#if defined(ESPS_SUPPORT_PWM)
-  handlePWM();
 #endif
 }
