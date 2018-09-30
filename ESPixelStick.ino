@@ -25,7 +25,6 @@
 #include <ArduinoJson.h>
 #include <Bounce2.h>
 #include <Hash.h>
-#include <SPI.h>
 #include "ESPixelStick.h"
 #include "RGBEffectWrapper.hpp"
 #include "wshandler.h"
