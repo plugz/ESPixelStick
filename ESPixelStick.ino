@@ -24,7 +24,6 @@
 #include <Bounce2.h>
 #include "ESPixelStick.h"
 #include "RGBEffectWrapper.hpp"
-#include "wshandler.h"
 #include "gamma.h"
 #include "conversions.h"
 
