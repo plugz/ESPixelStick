@@ -88,13 +88,11 @@ enum class DevMode : uint8_t {
 };
 */
 
-/* Test Modes */
-enum class TestMode : uint8_t {
-    DISABLED,
-    STATIC,
-    CHASE,
-    RAINBOW,
-    VIEW_STREAM
+/* dynamic input mode */
+enum class InputMode : uint8_t {
+    ARTNET_YCBCR,
+    ARTNET_FIXTURE,
+    BUTTON_FIXTURE
 };
 
 /* Configuration structure */
@@ -111,9 +109,8 @@ typedef struct {
     bool        gamma;          /* Use gamma map? */
     float       gammaVal;       /* gamma value to use */
     float       briteVal;       /* brightness lto use */
+
+    InputMode inputMode;
 } config_t;
-
-
-void setStatic(uint8_t r, uint8_t g, uint8_t b);
 
 #endif /* ESPIXELSTICK_H_ */

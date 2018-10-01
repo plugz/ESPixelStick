@@ -120,6 +120,7 @@ void RGBEffect::setMixingMode(RGBEffectMixingMode mixingMode)
 {
     switch (mixingMode)
     {
+    default:
     case RGBEffectMixingMode::REPLACE:
         mixPixel = mixPixelReplace;
         break;
@@ -193,6 +194,7 @@ bool RGBEffect::refreshPixels(unsigned long currentMillis)
         _prevUpdateMillis = (currentMillis / 20) * 20;
         switch (_pattern)
         {
+        default:
         case RGBEffectPattern::SMOOTH_ON_OFF:
             refreshPixelsSmoothOnOff();
             break;
@@ -305,6 +307,7 @@ void RGBEffect::beginCurrentCombo()
 {
     switch (_pattern)
     {
+    default:
     case RGBEffectPattern::SMOOTH_ON_OFF:
         beginSmoothOnOff();
         break;

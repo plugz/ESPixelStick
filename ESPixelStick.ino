@@ -24,6 +24,7 @@
 #include <Bounce2.h>
 #include "ESPixelStick.h"
 #include "RGBEffectWrapper.hpp"
+#include "RGBEffectWrapperDMX.hpp"
 #include "gamma.h"
 #include "conversions.h"
 
@@ -52,14 +53,9 @@ static void _u0_putc(char c){
 NoSerialClass NoSerial;
 #endif
 
-// Configuration file
-const char CONFIG_FILE[] = "/config.json";
-
 config_t            config;         // Current configuration
-uint32_t            *seqError;      // Sequence error tracking for each universe
 uint16_t            uniLast = 1;    // Last Universe to listen for
 bool                reboot = false; // Reboot flag
-uint8_t             *seqTracker;    // Current sequence numbers for each Universe */
 uint32_t            lastUpdate;     // Update timeout tracker
 
 // button
@@ -67,7 +63,8 @@ Bounce bounce;
 
 // Output Drivers
 PixelDriver     pixels;         // Pixel object
-RGBEffectWrapper rgbEffect;
+RGBEffectWrapper buttonRgbEffect;
+RGBEffectWrapperDMX artnetRgbEffect;
 static bool needRefresh = false;
 
 /////////////////////////////////////////////////////////
@@ -212,6 +209,7 @@ void setup() {
     wifi_set_promiscuous_rx_cb(sniffer_callback);
     delay(10);
     wifi_promiscuous_enable(ENABLE);
+    memset(dmxIn, 0, sizeof(dmxIn));
     /// } WIFI SNIFF
 
 #if defined(DEBUG)
@@ -288,22 +286,11 @@ void updateConfig() {
     else
         uniLast = config.universe + span / config.universe_limit - 1;
 
-    // Setup the sequence error tracker
-    uint8_t uniTotal = (uniLast + 1) - config.universe;
-
-    if (seqTracker) free(seqTracker);
-    if ((seqTracker = static_cast<uint8_t *>(malloc(uniTotal))))
-        memset(seqTracker, 0x00, uniTotal);
-
-    if (seqError) free(seqError);
-    if ((seqError = static_cast<uint32_t *>(malloc(uniTotal * 4))))
-        memset(seqError, 0x00, uniTotal * 4);
-
     // Initialize for our pixel type
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
-    rgbEffect.begin(pixels.getData(), LED_COUNT);
+    buttonRgbEffect.begin(pixels.getData(), LED_COUNT);
 
     LOG_PORT.print(F("- Listening for "));
     LOG_PORT.print(config.channel_count);
@@ -330,47 +317,57 @@ void loadConfig() {
     config.gammaVal = 2.2f;
     config.briteVal = 1.0f;
 
+    config.inputMode = InputMode::ARTNET_YCBCR;
+
     // Validate it
     validateConfig();
 }
 
 /////////////////////////////////////////////////////////
 //
-//  Set routines for Testing
+//  Button handling
 //
 /////////////////////////////////////////////////////////
 
-void setStatic(uint8_t r, uint8_t g, uint8_t b) {
-    uint16_t i = 0;
-    while (i <= config.channel_count - 3) {
-        pixels.setValue(i++, r);
-        pixels.setValue(i++, g);
-        pixels.setValue(i++, b);
-    }
+// Set input mode to BUTTON_FIXTURE after 5 events
+static void buttonEvent()
+{
+    static unsigned int buttonEventCount = 0;
+    ++buttonEventCount;
+    if (buttonEventCount > 5)
+        config.inputMode = InputMode::BUTTON_FIXTURE;
 }
 
 void handleButtonLongPressBegin()
 {
     LOG_PORT.println("LONG PRESS BEGIN");
-    rgbEffect.startFlash();
+    buttonRgbEffect.startFlash();
+
+    buttonEvent();
 }
 
 void handleButtonLongPressEnd()
 {
     LOG_PORT.println("LONG PRESS END");
-    rgbEffect.stopFlash();
+    buttonRgbEffect.stopFlash();
+
+    buttonEvent();
 }
 
 void handleButtonClick()
 {
     LOG_PORT.println("DOUBLE CLICK RELEASE");
-    rgbEffect.nextMode();
+    buttonRgbEffect.nextMode();
+
+    buttonEvent();
 }
 
 void handleButtonDoubleClick()
 {
     LOG_PORT.println("CLICK RELEASE");
-    rgbEffect.nextColor();
+    buttonRgbEffect.nextColor();
+
+    buttonEvent();
 }
 
 void handleButton()
@@ -430,7 +427,7 @@ void handleButton()
 //  Main Loop
 //
 /////////////////////////////////////////////////////////
-static void convertFromYCbCr(uint8_t* rgbFromYCbCr, uint8_t const* ycbcr5bit, unsigned int ycbcr5bitSize)
+static void convertFromYCbCr5bit(uint8_t* rgbFromYCbCr, uint8_t const* ycbcr5bit, unsigned int ycbcr5bitSize)
 {
     uint8_t cb[4];
     uint8_t cr[4];
@@ -443,6 +440,41 @@ static void convertFromYCbCr(uint8_t* rgbFromYCbCr, uint8_t const* ycbcr5bit, un
     }
 }
 
+static void handleArtNet()
+{
+    if (receivedSize == 0)
+        return;
+
+    unsigned int inSize = receivedSize;
+    receivedSize = 0;
+
+    // Ignore artnet once the button mode has been activated
+    if (config.inputMode == InputMode::BUTTON_FIXTURE)
+        return;
+
+    // universe coded on 7 bits
+    if ((receivedUniverse & 0x7f) != config.universe)
+        return;
+
+    if ((receivedUniverse & 0x80) == 0)
+    {
+        config.inputMode = InputMode::ARTNET_YCBCR;
+
+        unsigned int maxInSize = ((LED_COUNT * 3) * 9) / 12;
+        if (inSize > maxInSize)
+            inSize = maxInSize;
+
+        convertFromYCbCr5bit(pixels.getData(), (uint8_t*)dmxIn, inSize);
+        needRefresh = true;
+    }
+    else
+    {
+        config.inputMode = InputMode::ARTNET_FIXTURE;
+
+        artnetRgbEffect.setInputDMX((uint8_t*)dmxIn, inSize);
+    }
+}
+
 void loop() {
     // Reboot handler
     if (reboot) {
@@ -451,51 +483,14 @@ void loop() {
     }
 
     handleButton();
+    handleArtNet();
 
-    if (receivedSize > 0)
-    {
-        static int logCounter = 0;
-        ++logCounter;
-
-        if (logCounter%50==0)
-        {
-            LOG_PORT.print("dmx[0]=");
-            LOG_PORT.print(dmxIn[0], DEC);
-            LOG_PORT.print("dmx[1]=");
-            LOG_PORT.print(dmxIn[1], DEC);
-            LOG_PORT.print("dmx[2]=");
-            LOG_PORT.print(dmxIn[2], DEC);
-            LOG_PORT.print("dmx[3]=");
-            LOG_PORT.print(dmxIn[3], DEC);
-            LOG_PORT.print("dmx[4]=");
-            LOG_PORT.print(dmxIn[4], DEC);
-            LOG_PORT.print("dmx[5]=");
-            LOG_PORT.print(dmxIn[5], DEC);
-        }
-
-
-        uint8_t rgbFromYCbCr[120];
-        uint8_t* input = (uint8_t*)dmxIn;
-        unsigned int size = receivedSize;
-        if ((receivedUniverse & 0x80) == 0)
-        {
-            if (logCounter%50==0)LOG_PORT.println("converting from ycbcr");
-            input = rgbFromYCbCr;
-            size = receivedSize + (receivedSize / 3);
-            convertFromYCbCr(rgbFromYCbCr, (uint8_t*)dmxIn, receivedSize);
-        }
-        else
-        {
-            if (logCounter%50==0)LOG_PORT.println("not converting from ycbcr");
-        }
-        if (size > LED_COUNT * 3)
-            size = LED_COUNT * 3;
-        memcpy(pixels.getData(), input, size);
-        receivedSize = 0;
+    if ((config.inputMode == InputMode::BUTTON_FIXTURE)
+            && buttonRgbEffect.refreshPixels(millis()))
         needRefresh = true;
-    }
-    //if (rgbEffect.refreshPixels(millis()))
-    //    needRefresh = true;
+    else if ((config.inputMode == InputMode::ARTNET_FIXTURE)
+            && artnetRgbEffect.refreshPixels(millis()))
+        needRefresh = true;
 /* Streaming refresh */
     if (needRefresh && pixels.canRefresh()) {
         pixels.show();

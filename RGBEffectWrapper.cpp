@@ -5,7 +5,7 @@
 #define MYMIN(x, y) ((x) < (y) ? (x) : (y))
 
 /**/
-static const RGBEffect::PosArray sPosArray =
+const RGBEffect::PosArray RGBEffectWrapper::posArray =
     RGBEffect::posArrayFromLedArray({// Fairy Wings
         -1, -1, -1, -1, -1, -1, -1, 26, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, 27, -1, -1, -1, 25, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 14, -1, -1, -1, 12, -1, -1, -1, -1, -1,
@@ -28,7 +28,7 @@ static const RGBEffect::PosArray sPosArray =
         }, 40, 18);
 /**/
 /** /
-static const RGBEffect::PosArray sPosArray =
+static const RGBEffect::PosArray posArray =
     RGBEffect::posArrayFromLedArray({// Eventail
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 17, -1, 18, -1, 19, -1, 20, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, 21, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -54,7 +54,7 @@ static const RGBEffect::PosArray sPosArray =
         }, 40, 18);
 / **/
 /** /
-static const RGBEffect::PosArray sPosArray =
+static const RGBEffect::PosArray posArray =
     RGBEffect::posArrayFromLedArray({ // Jupe
         -1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 39, -1, 38, -1, -1,
@@ -70,7 +70,7 @@ static const RGBEffect::PosArray sPosArray =
         -1, -1, -1, -1, 26, -1, 27, -1, 28, -1, 29, -1, 30, -1, 31, -1, 32, -1, -1, -1, -1, -1, -1, -1,
         }, 24, 12);
 / **/
-//static const RGBEffect::PosArray sPosArray = RGBEffect::posArraySimple(LED_COUNT, 1);
+//static const RGBEffect::PosArray posArray = RGBEffect::posArraySimple(LED_COUNT, 1);
 
 struct EffectDesc
 {
@@ -242,7 +242,7 @@ void RGBEffectWrapper::begin()
                 effectDesc.mixingMode,
                 _pixels,
                 _pixelCount,
-                sPosArray
+                posArray
                 );
         LOG_PORT.println("setLoopTim");
         _currentEffects[idx].setLoopTime(effectDesc.loopTime);
@@ -262,7 +262,7 @@ void RGBEffectWrapper::begin()
                 strobeEffectDesc.mixingMode,
                 _pixels,
                 _pixelCount,
-                sPosArray
+                posArray
                 );
         _currentStrobeEffects[idx].setLoopTime(strobeEffectDesc.loopTime);
         ++idx;

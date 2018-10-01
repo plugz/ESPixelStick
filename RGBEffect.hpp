@@ -32,6 +32,8 @@ enum class RGBEffectPattern
     ROTATION_SMOOTH,
     ROTATION_SMOOTH_THIN,
     PLASMA,
+
+    COUNT
 };
 
 enum class RGBEffectColor
@@ -43,6 +45,8 @@ enum class RGBEffectColor
     GOLD,
     WHITE,
     PINK,
+
+    COUNT
 };
 
 enum class RGBEffectMixingMode
@@ -63,6 +67,8 @@ enum class RGBEffectMixingMode
     GRAINEXTRACT,
     GRAINMERGE,
     DIFFERENCE,
+
+    COUNT,
 };
 
 class RGBEffect
