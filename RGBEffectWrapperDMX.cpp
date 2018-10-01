@@ -60,6 +60,7 @@ void RGBEffectWrapperDMX::setInputDMX(uint8_t const* data, unsigned int size)
     if (size != _currentDataSize || memcmp(data, _currentData, size))
     {
         memcpy(_currentData, data, size);
+        _currentDataSize = size;
         begin();
     }
 }
