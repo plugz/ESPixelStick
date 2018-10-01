@@ -292,6 +292,7 @@ void updateConfig() {
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
     buttonRgbEffect.begin(pixels.getData(), LED_COUNT);
+    artnetRgbEffect.begin(pixels.getData(), LED_COUNT);
 
     LOG_PORT.print(F("- Listening for "));
     LOG_PORT.print(config.channel_count);
