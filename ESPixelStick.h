@@ -49,7 +49,7 @@ const char BUILD_DATE[] = __DATE__;
 #define RENARD_LIMIT    2048    /* Channel limit for serial outputs */
 #define CONNECT_TIMEOUT 15000   /* 15 seconds */
 #define REBOOT_DELAY    100     /* Delay for rebooting once reboot flag is set */
-#if 1
+#if 0
 #define LOG_PORT        Serial  /* Serial port for console logging */
 #else
 class NoSerialClass
