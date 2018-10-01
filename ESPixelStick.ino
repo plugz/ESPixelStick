@@ -158,7 +158,12 @@ static void readData(struct SnifferPacket2* snifferPacket, uint16_t len) {
     if (memcmp(macData, "Ar", 2) || memcmp(macData + 6, "ArtRaw", 6))
         return;
 
-    receivedUniverse = macData[2];
+    int universe = macData[2];
+    LOG_PORT.print("received uni ");
+    LOG_PORT.println(universe, DEC);
+    if ((universe & 0x7f) != config.universe) // filter on universe here
+        return;
+    receivedUniverse = universe;
     receivedSequence = macData[3];
     receivedSize = macData[4];
     if (receivedSize > sizeof(dmxIn))
