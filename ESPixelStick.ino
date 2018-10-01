@@ -227,6 +227,7 @@ void setup() {
     LOG_PORT.println(")");
 
     pixels.setPin(DATA_PIN);
+    loadConfig();
     updateConfig();
     pixels.show();
 }
