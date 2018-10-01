@@ -24,16 +24,9 @@ void RGBEffectWrapperDMX::begin()
         unsigned int speed = _currentData[i * 4 + 2];
         unsigned int mixMode = _currentData[i * 4 + 3];
 
-        //LOG_PORT.print(i, DEC);
         // pattern == 0 means skip to the next one
         if (pattern == 0)
-        {
-        //    LOG_PORT.println(", pattern=0");
             continue;
-        }
-        //else
-        //    LOG_PORT.println(", pattern!=0");
-
         pattern -= 1;
 
         if (pattern >= (unsigned int)RGBEffectPattern::COUNT)
@@ -66,7 +59,6 @@ void RGBEffectWrapperDMX::setInputDMX(uint8_t const* data, unsigned int size)
 {
     if (size != _currentDataSize || memcmp(data, _currentData, size))
     {
-        LOG_PORT.println("copy dmx input");
         memcpy(_currentData, data, size);
         _currentDataSize = size;
         begin();
@@ -79,9 +71,6 @@ bool RGBEffectWrapperDMX::refreshPixels(unsigned long currentMillis)
 
     for (auto& effect : _currentEffects)
         ret |= effect.refreshPixels(currentMillis);
-
-    if (ret)
-        LOG_PORT.println("refreshPixels ON");
 
     return ret;
 }
