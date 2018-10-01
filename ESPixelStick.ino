@@ -442,8 +442,10 @@ static void convertFromYCbCr5bit(uint8_t* rgbFromYCbCr, uint8_t const* ycbcr5bit
     {
         conv_cbcr_from_5bit(ycbcr5bit + (i * 9) + 4, cb, cr);
         for (unsigned int j = 0; j < 4; ++j)
+        {
             conv_ycbcr_to_rgb(rgbFromYCbCr + (i * 3 * 4) + (j * 3),
                     ycbcr5bit[i * 9 + j], cb[j], cr[j]);
+        }
     }
 }
 
@@ -452,19 +454,31 @@ static void handleArtNet()
     if (receivedSize == 0)
         return;
 
+    LOG_PORT.println("received artnet");
+
     unsigned int inSize = receivedSize;
     receivedSize = 0;
 
     // Ignore artnet once the button mode has been activated
     if (config.inputMode == InputMode::BUTTON_FIXTURE)
+    {
+        LOG_PORT.println("inside handleArtNet");
         return;
+    }
 
     // universe coded on 7 bits
     if ((receivedUniverse & 0x7f) != config.universe)
+    {
+        LOG_PORT.print("received ");
+        LOG_PORT.print(receivedUniverse & 0x7f, DEC);
+        LOG_PORT.print(" != ");
+        LOG_PORT.println(config.universe, DEC);
         return;
+    }
 
     if ((receivedUniverse & 0x80) == 0)
     {
+        LOG_PORT.println("ARTNET_YCBCR");
         config.inputMode = InputMode::ARTNET_YCBCR;
 
         unsigned int maxInSize = ((LED_COUNT * 3) * 9) / 12;
@@ -476,6 +490,7 @@ static void handleArtNet()
     }
     else
     {
+        LOG_PORT.println("ARTNET_FIXTURE");
         config.inputMode = InputMode::ARTNET_FIXTURE;
 
         artnetRgbEffect.setInputDMX((uint8_t*)dmxIn, inSize);
