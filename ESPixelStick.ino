@@ -320,7 +320,7 @@ void loadConfig() {
 
     config.pixel_type = PixelType::WS2811;
     config.pixel_color = PixelColor::GRB;
-    config.gamma = true;
+    config.gamma = false;
     config.gammaVal = 2.2f;
     config.briteVal = 1.0f;
 
