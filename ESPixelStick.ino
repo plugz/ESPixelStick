@@ -472,6 +472,20 @@ static void handleArtNet()
             inSize = maxInSize;
 
         convertFromYCbCr5bit(pixels.getData(), (uint8_t*)dmxIn, inSize);
+        // copy data from the end to the beginning, and triple the pixels
+        uint8_t* data = pixels.getData();
+        for (int i = 39; i >= 0; --i)
+        {
+            data[i * 9 + 0] = data[i * 3 + 0]; // r
+            data[i * 9 + 1] = data[i * 3 + 1]; // g
+            data[i * 9 + 2] = data[i * 3 + 2]; // b
+            data[i * 9 + 3] = data[i * 3 + 0]; // r
+            data[i * 9 + 4] = data[i * 3 + 1]; // g
+            data[i * 9 + 5] = data[i * 3 + 2]; // b
+            data[i * 9 + 6] = data[i * 3 + 0]; // r
+            data[i * 9 + 7] = data[i * 3 + 1]; // g
+            data[i * 9 + 8] = data[i * 3 + 2]; // b
+        }
         needRefresh = true;
     }
     else

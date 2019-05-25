@@ -31,7 +31,7 @@ const char BUILD_DATE[] = __DATE__;
 #define ESPS_MODE_PIXEL
 //#define ESPS_MODE_SERIAL
 
-#define LED_COUNT 40
+#define LED_COUNT 120
 
 /*****************************************/
 /*         END - Configuration           */
