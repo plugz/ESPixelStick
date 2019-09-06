@@ -4,7 +4,7 @@
 
 #define MYMIN(x, y) ((x) < (y) ? (x) : (y))
 
-/** /
+/**/
 static const RGBEffect::PosArray sPosArray =
     RGBEffect::posArrayFromLedArray({// Fairy Wings
         -1, -1, -1, -1, -1, -1, -1, 26, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 13, -1, -1, -1, -1, -1, -1, -1,
@@ -26,7 +26,7 @@ static const RGBEffect::PosArray sPosArray =
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 37, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 38, -1, 39, -1, -1,  0, -1,  1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         }, 40, 18);
-/ **/
+/**/
 /** /
 static const RGBEffect::PosArray sPosArray =
     RGBEffect::posArrayFromLedArray({ // demi lune
@@ -50,7 +50,7 @@ static const RGBEffect::PosArray sPosArray =
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         }, 32, 18);
 / **/
-/**/
+/** /
 static const RGBEffect::PosArray sPosArray =
     RGBEffect::posArrayFromLedArray({ // lampadaire
         32, 33, 34, 35, 36, 37, 38, 39,
@@ -78,7 +78,7 @@ static const RGBEffect::PosArray sPosArray =
         -1, -1, -1, -1,  1, -1, -1, -1,
         -1, -1, -1,  0, -1, -1, -1, -1,
         }, 8, 24);
-/**/
+/ **/
 /** /
 static const RGBEffect::PosArray sPosArray =
     RGBEffect::posArrayFromLedArray({// Eventail
@@ -138,14 +138,6 @@ struct EffectComboDesc
 };
 
 EffectComboDesc sEffects[] = {
-    {
-        {
-            {RGBEffectPattern::PLASMA, RGBEffectMixingMode::REPLACE, 4000}
-        },
-        {
-            {RGBEffectPattern::STROBE, RGBEffectMixingMode::MAX, 160}
-        }
-    },
     {
         {
             {RGBEffectPattern::PLASMA, RGBEffectMixingMode::REPLACE, 4000},
