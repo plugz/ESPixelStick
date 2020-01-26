@@ -17,6 +17,8 @@
 *
 */
 
+#define CFG_UNIVERSE 0
+
 /*****************************************/
 /*         END - Configuration           */
 /*****************************************/
@@ -313,7 +315,7 @@ void loadConfig() {
     memset(&config, 0, sizeof(config));
 
     // Override config
-    config.universe = 0;
+    config.universe = CFG_UNIVERSE;
     config.universe_limit = UNIVERSE_MAX;
     config.channel_start = 1;
     config.channel_count = LED_COUNT * 3;
