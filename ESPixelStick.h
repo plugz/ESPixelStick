@@ -32,7 +32,11 @@ const char BUILD_DATE[] = __DATE__;
 //#define ESPS_MODE_SERIAL
 
 #define CFG_UNIVERSE 0
-#define LED_COUNT 120
+#define CFG_PIXEL_MULTIPLIER 2
+#define CFG_POWER_LIMIT 1
+#define CFG_DYNAMIC_POWER_LIMIT 1
+
+#define CFG_LED_COUNT (40 * CFG_PIXEL_MULTIPLIER)
 
 /*****************************************/
 /*         END - Configuration           */

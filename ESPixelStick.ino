@@ -296,8 +296,8 @@ void updateConfig() {
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
-    buttonRgbEffect.begin(pixels.getData(), LED_COUNT);
-    artnetRgbEffect.begin(pixels.getData(), LED_COUNT);
+    buttonRgbEffect.begin(pixels.getData(), CFG_LED_COUNT);
+    artnetRgbEffect.begin(pixels.getData(), CFG_LED_COUNT);
 
     LOG_PORT.print(F("- Listening for "));
     LOG_PORT.print(config.channel_count);
@@ -316,7 +316,7 @@ void loadConfig() {
     config.universe = CFG_UNIVERSE;
     config.universe_limit = UNIVERSE_MAX;
     config.channel_start = 1;
-    config.channel_count = LED_COUNT * 3;
+    config.channel_count = CFG_LED_COUNT * 3;
 
     config.pixel_type = PixelType::WS2811;
     config.pixel_color = PixelColor::GRB;
@@ -467,24 +467,51 @@ static void handleArtNet()
     {
         config.inputMode = InputMode::ARTNET_YCBCR;
 
-        unsigned int maxInSize = ((LED_COUNT * 3) * 9) / 12;
+        unsigned int maxInSize = ((CFG_LED_COUNT * 3) * 9) / 12;
         if (inSize > maxInSize)
             inSize = maxInSize;
 
         convertFromYCbCr5bit(pixels.getData(), (uint8_t*)dmxIn, inSize);
-        // copy data from the end to the beginning, and triple the pixels
-        uint8_t* data = pixels.getData();
-        for (int i = 39; i >= 0; --i)
+        if (CFG_PIXEL_MULTIPLIER > 1)
         {
-            data[i * 9 + 0] = data[i * 3 + 0]; // r
-            data[i * 9 + 1] = data[i * 3 + 1]; // g
-            data[i * 9 + 2] = data[i * 3 + 2]; // b
-            data[i * 9 + 3] = data[i * 3 + 0]; // r
-            data[i * 9 + 4] = data[i * 3 + 1]; // g
-            data[i * 9 + 5] = data[i * 3 + 2]; // b
-            data[i * 9 + 6] = data[i * 3 + 0]; // r
-            data[i * 9 + 7] = data[i * 3 + 1]; // g
-            data[i * 9 + 8] = data[i * 3 + 2]; // b
+            uint8_t* data = pixels.getData();
+            float powerDivider = 1.0f / CFG_PIXEL_MULTIPLIER;
+            if (CFG_DYNAMIC_POWER_LIMIT)
+            {
+                int powerTotal = 0;
+                for (int i = 0; i < 40; ++i)
+                {
+                    powerTotal += data[i * 3 + 0]; // r
+                    powerTotal += data[i * 3 + 1]; // g
+                    powerTotal += data[i * 3 + 2]; // b
+                }
+                powerTotal *= CFG_PIXEL_MULTIPLIER;
+                float const powerMax = 255 * 40 * 3;
+                if (powerTotal > powerMax)
+                    powerDivider = powerMax / powerTotal;
+                else
+                    powerDivider = 1.0f;
+            }
+            // Multiply pixels.
+            // Do it from back to front so data is not overwritten.
+            for (int i = 39; i >= 0; --i)
+            {
+                uint8_t r = data[i * 3 + 0];
+                uint8_t g = data[i * 3 + 1];
+                uint8_t b = data[i * 3 + 2];
+                if (CFG_POWER_LIMIT)
+                {
+                    r *= powerDivider;
+                    g *= powerDivider;
+                    b *= powerDivider;
+                }
+                for (int j = (CFG_PIXEL_MULTIPLIER - 1); j >= 0; --j)
+                {
+                    data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 2] = b;
+                    data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 1] = g;
+                    data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 0] = r;
+                }
+            }
         }
         needRefresh = true;
     }
