@@ -6,7 +6,7 @@
 
 const RGBEffect::PosArray RGBEffectWrapper::posArray =
 /**/
-    RGBEffect::posArraySimple(CFG_LED_COUNT, 1);
+    RGBEffect::posArraySimple(CFG_PIXEL_COUNT, 1);
 /**/
 /** /
     RGBEffect::posArrayFromLedArray({// Fairy Wings V2

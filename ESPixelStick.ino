@@ -63,6 +63,7 @@ Bounce bounce;
 
 // Output Drivers
 PixelDriver     pixels;         // Pixel object
+uint8_t pixelsPreMul[CFG_PIXEL_COUNT * 3]; // pixels before multiplication
 RGBEffectWrapper buttonRgbEffect;
 RGBEffectWrapperDMX artnetRgbEffect;
 static bool needRefresh = false;
@@ -296,8 +297,9 @@ void updateConfig() {
     pixels.begin(config.pixel_type, config.pixel_color, config.channel_count / 3);
     pixels.setGamma(config.gamma);
     updateGammaTable(config.gammaVal, config.briteVal);
-    buttonRgbEffect.begin(pixels.getData(), CFG_LED_COUNT);
-    artnetRgbEffect.begin(pixels.getData(), CFG_LED_COUNT);
+    uint8_t *data = (CFG_PIXEL_MULTIPLIER > 1 ? pixelsPreMul : pixels.getData());
+    buttonRgbEffect.begin(data, CFG_PIXEL_COUNT);
+    artnetRgbEffect.begin(data, CFG_PIXEL_COUNT);
 
     LOG_PORT.print(F("- Listening for "));
     LOG_PORT.print(config.channel_count);
@@ -471,48 +473,9 @@ static void handleArtNet()
         if (inSize > maxInSize)
             inSize = maxInSize;
 
-        convertFromYCbCr5bit(pixels.getData(), (uint8_t*)dmxIn, inSize);
-        if (CFG_PIXEL_MULTIPLIER > 1)
-        {
-            uint8_t* data = pixels.getData();
-            float powerDivider = 1.0f / CFG_PIXEL_MULTIPLIER;
-            if (CFG_DYNAMIC_POWER_LIMIT)
-            {
-                int powerTotal = 0;
-                for (int i = 0; i < 40; ++i)
-                {
-                    powerTotal += data[i * 3 + 0]; // r
-                    powerTotal += data[i * 3 + 1]; // g
-                    powerTotal += data[i * 3 + 2]; // b
-                }
-                powerTotal *= CFG_PIXEL_MULTIPLIER;
-                float const powerMax = 255 * 40 * 3;
-                if (powerTotal > powerMax)
-                    powerDivider = powerMax / powerTotal;
-                else
-                    powerDivider = 1.0f;
-            }
-            // Multiply pixels.
-            // Do it from back to front so data is not overwritten.
-            for (int i = 39; i >= 0; --i)
-            {
-                uint8_t r = data[i * 3 + 0];
-                uint8_t g = data[i * 3 + 1];
-                uint8_t b = data[i * 3 + 2];
-                if (CFG_POWER_LIMIT)
-                {
-                    r *= powerDivider;
-                    g *= powerDivider;
-                    b *= powerDivider;
-                }
-                for (int j = (CFG_PIXEL_MULTIPLIER - 1); j >= 0; --j)
-                {
-                    data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 2] = b;
-                    data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 1] = g;
-                    data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 0] = r;
-                }
-            }
-        }
+        uint8_t *data =
+            (CFG_PIXEL_MULTIPLIER > 1 ? pixelsPreMul : pixels.getData());
+        convertFromYCbCr5bit(data, (uint8_t*)dmxIn, inSize);
         needRefresh = true;
     }
     else
@@ -520,6 +483,53 @@ static void handleArtNet()
         config.inputMode = InputMode::ARTNET_FIXTURE;
 
         artnetRgbEffect.setInputDMX((uint8_t*)dmxIn, inSize);
+    }
+}
+
+static void multiplyPixels()
+{
+    if (CFG_PIXEL_MULTIPLIER <= 1)
+        return;
+
+    uint8_t const* inData = pixelsPreMul;
+    uint8_t* data = pixels.getData();
+    float powerDivider = 1.0f / CFG_PIXEL_MULTIPLIER;
+    if (CFG_DYNAMIC_POWER_LIMIT)
+    {
+        int powerTotal = 0;
+        for (int i = 0; i < CFG_PIXEL_COUNT; ++i)
+        {
+            powerTotal += inData[i * 3 + 0]; // r
+            powerTotal += inData[i * 3 + 1]; // g
+            powerTotal += inData[i * 3 + 2]; // b
+        }
+        powerTotal *= CFG_PIXEL_MULTIPLIER;
+        float const powerMax = 255 * CFG_PIXEL_COUNT * 3;
+        if (powerTotal > powerMax)
+            powerDivider = powerMax / powerTotal;
+        else
+            powerDivider = 1.0f;
+    }
+    // Multiply pixels.
+    // Do it from back to front so data is not overwritten.
+    // no need to do it in reverse now but whatever
+    for (int i = CFG_PIXEL_COUNT - 1; i >= 0; --i)
+    {
+        uint8_t r = inData[i * 3 + 0];
+        uint8_t g = inData[i * 3 + 1];
+        uint8_t b = inData[i * 3 + 2];
+        if (CFG_POWER_LIMIT)
+        {
+            r *= powerDivider;
+            g *= powerDivider;
+            b *= powerDivider;
+        }
+        for (int j = (CFG_PIXEL_MULTIPLIER - 1); j >= 0; --j)
+        {
+            data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 2] = b;
+            data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 1] = g;
+            data[i * (3 * CFG_PIXEL_MULTIPLIER) + (j * 3) + 0] = r;
+        }
     }
 }
 
@@ -541,6 +551,7 @@ void loop() {
         needRefresh = true;
 /* Streaming refresh */
     if (needRefresh && pixels.canRefresh()) {
+        multiplyPixels();
         pixels.show();
         needRefresh = false;
     }

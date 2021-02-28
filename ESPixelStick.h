@@ -36,7 +36,8 @@ const char BUILD_DATE[] = __DATE__;
 #define CFG_POWER_LIMIT 1
 #define CFG_DYNAMIC_POWER_LIMIT 0
 
-#define CFG_LED_COUNT (38 * CFG_PIXEL_MULTIPLIER)
+#define CFG_PIXEL_COUNT 38
+#define CFG_LED_COUNT (CFG_PIXEL_COUNT * CFG_PIXEL_MULTIPLIER)
 
 /*****************************************/
 /*         END - Configuration           */
